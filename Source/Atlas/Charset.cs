@@ -1,44 +1,89 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections;
 
-namespace SharpMSDF.Atlas
+namespace SharpMSDF.Atlas;
+/// <summary>
+/// Represents a set of Unicode codepoints (characters)
+/// </summary>
+public struct Charset
 {
-    /// Represents a set of Unicode codepoints (characters)
-    public partial class Charset : IEnumerable<uint>
-    {
-        /// The set of the 95 printable ASCII characters
-        public readonly static Charset ASCII = CreateAsciiCharset();
+	private SortedSet<uint> _codepoints;
 
-        static Charset CreateAsciiCharset()
-        {
-            Charset ascii = new();
-            for (uint cp = 0x20; cp < 0x7f; ++cp)
-                ascii.Add(cp);
-            return ascii;
-        }
+	/// <summary>
+	/// The set of the 95 printable ASCII characters
+	/// </summary>
+	public static readonly SortedSet<uint> ASCII = CreateAsciiCharset();
 
-        /// <summary>
-        /// Adds a codepoint
-        /// </summary>
-        public void Add(uint cp) => _Codepoints.Add(cp);
-        /// <summary>
-        /// Removes a codepoint
-        /// </summary>
-        public void Remove(uint cp) => _Codepoints.Remove(cp);
+	private static SortedSet<uint> CreateAsciiCharset()
+	{
+		var ascii = new SortedSet<uint>();
+		for (uint cp = 0x20; cp < 0x7f; ++cp)
+		{
+			ascii.Add(cp);
+		}
+		return ascii;
+	}
 
-        public int Size() => _Codepoints.Count;
-        public bool Empty() => _Codepoints.Count == 0;
+	public Charset()
+	{
+		_codepoints = new SortedSet<uint>();
+	}
 
-        IEnumerator<uint> IEnumerable<uint>.GetEnumerator() => _Codepoints.GetEnumerator();
+	public Charset(SortedSet<uint> codepoints)
+	{
+		_codepoints = codepoints ?? new SortedSet<uint>();
+	}
 
-        IEnumerator IEnumerable.GetEnumerator() => _Codepoints.GetEnumerator();
+	/// <summary>
+	/// Adds a codepoint
+	/// </summary>
+	public void Add(uint cp)
+	{
+		_codepoints.Add(cp);
+	}
 
-        private SortedSet<uint> _Codepoints = [];
+	/// <summary>
+	/// Removes a codepoint
+	/// </summary>
+	public void Remove(uint cp)
+	{
+		_codepoints.Remove(cp);
+	}
 
-    };
+	public int Size()
+	{
+		return _codepoints.Count;
+	}
 
+	public bool Empty()
+	{
+		return _codepoints.Count == 0;
+	}
+
+	public SortedSet<uint>.Enumerator GetEnumerator()
+	{
+		return _codepoints.GetEnumerator();
+	}
+
+	public SortedSet<uint> GetCodepoints()
+	{
+		return _codepoints;
+	}
+
+	// Implicit conversion from ReadOnlySpan<char> to Charset
+	public static implicit operator Charset(ReadOnlySpan<char> chars)
+	{
+		var charset = new Charset();
+		foreach (char ch in chars)
+			charset.Add(ch);
+		return charset;
+	}
+
+	// Implicit conversion from ReadOnlySpan<uint> to Charset
+	public static implicit operator Charset(ReadOnlySpan<uint> codepoints)
+	{
+		var charset = new Charset();
+		foreach (uint cp in codepoints)
+			charset.Add(cp);
+		return charset;
+	}
 }

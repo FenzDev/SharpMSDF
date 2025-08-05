@@ -1,7 +1,4 @@
-﻿using System;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using SharpMSDF.Core;
+﻿using SharpMSDF.Core;
 
 namespace SharpMSDF.Atlas
 {

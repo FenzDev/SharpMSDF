@@ -7,4 +7,16 @@
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <UseSkia>true</UseSkia>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseSkia)' == 'true'">
+    <PackageReference Include="SkiaSharp" Version="3.119.0" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(UseSkia)' == 'true'">
+    <DefineConstants>MSDFGEN_USE_SKIA</DefineConstants>
+  </PropertyGroup>
+
 </Project>

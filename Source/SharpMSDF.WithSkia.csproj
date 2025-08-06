@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<DefineConstants>$(DefineConstants);USE_SKIA</DefineConstants>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<!--Hide the base project code-->
+		<Compile Include="Core;Atlas;IO">
+			<Visible>false</Visible>
+		</Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="SkiaSharp" Version="3.119.0" />
+		<PackageReference Include="SkiaSharp.NativeAssets.Win32"
+						  Version="3.119.0">
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+	</ItemGroup>
+</Project>

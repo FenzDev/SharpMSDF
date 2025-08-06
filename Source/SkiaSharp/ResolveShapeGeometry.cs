@@ -1,7 +1,9 @@
-﻿#if MSDFGEN_USE_SKIA
+﻿// REMARK: USE_SKIA Constant is not necessary but its there for now
+#if USE_SKIA
 
 using SharpMSDF.Core;
 using SkiaSharp;
+using System.Runtime.CompilerServices;
 
 namespace SharpMSDF.SkiaSharp
 {
@@ -9,39 +11,38 @@ namespace SharpMSDF.SkiaSharp
 	public static class ResolveShapeGeometry
 	{
 
-		public static SKPoint PointToSkiaPoint(Vector2 p)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static SKPoint PointToSkiaPoint(Vector2 p)
 		{
 			return new SKPoint((float)p.X, (float)p.Y);
 		}
-
-		public static Vector2 PointFromSkiaPoint(SKPoint p)
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Vector2 PointFromSkiaPoint(SKPoint p)
 		{
 			return new Vector2(p.X, p.Y);
 		}
 
-		public static void ShapeToSkiaPath(SKPath skPath, Shape shape)
+		private static void ShapeToSkiaPath(SKPath skPath, Shape shape)
 		{
 			foreach (var contour in shape.Contours)
 			{
 				if (contour.Edges.Count > 0)
 				{
 					var edge = contour.Edges.LastOrDefault();
-					var controlPoints = edge.ControlPoints();
-					skPath.MoveTo(PointToSkiaPoint(controlPoints[0]));
+					skPath.MoveTo(PointToSkiaPoint(edge.P0));
 
 					foreach (var nextEdge in contour.Edges)
 					{
-						var p = edge.ControlPoints();
-						switch (edge.Type())
+						switch (edge.EdgeType)
 						{
-							case 1:
-								skPath.LineTo(PointToSkiaPoint(p[1]));
+							case Bezier.Linear:
+								skPath.LineTo(PointToSkiaPoint(edge.P1));
 								break;
-							case 2:
-								skPath.QuadTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]));
+							case Bezier.Quadratic:
+								skPath.QuadTo(PointToSkiaPoint(edge.P1), PointToSkiaPoint(edge.P2));
 								break;
-							case 3:
-								skPath.CubicTo(PointToSkiaPoint(p[1]), PointToSkiaPoint(p[2]), PointToSkiaPoint(p[3]));
+							case Bezier.Cubic:
+								skPath.CubicTo(PointToSkiaPoint(edge.P1), PointToSkiaPoint(edge.P2), PointToSkiaPoint(edge.P3));
 								break;
 						}
 						edge = nextEdge;
@@ -50,7 +51,7 @@ namespace SharpMSDF.SkiaSharp
 			}
 		}
 
-		public static void ShapeFromSkiaPath(Shape shape, SKPath skPath)
+		private static void ShapeFromSkiaPath(Shape shape, SKPath skPath)
 		{
 			shape.Contours.Clear();
 			Contour contour = shape.AddContour();
@@ -130,10 +131,10 @@ namespace SharpMSDF.SkiaSharp
 			{
 				var contour = shape.Contours[i];
 				if (contour.Edges.Count == 4 &&
-					contour.Edges[0].Type() == 0 &&
-					contour.Edges[1].Type() == 0 &&
-					contour.Edges[2].Type() == 0 &&
-					contour.Edges[3].Type() == 0)
+					contour.Edges[0].EdgeType == 0 &&
+					contour.Edges[1].EdgeType == 0 &&
+					contour.Edges[2].EdgeType == 0 &&
+					contour.Edges[3].EdgeType == 0)
 				{
 					var sum = Sign(CrossProduct(contour.Edges[0].Direction(1), contour.Edges[1].Direction(0))) +
 							  Sign(CrossProduct(contour.Edges[1].Direction(1), contour.Edges[2].Direction(0))) +
@@ -168,41 +169,46 @@ namespace SharpMSDF.SkiaSharp
 			{
 				shape.Contours.RemoveAt(shape.Contours.Count - 1);
 			}
-		}
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int Sign(double value)
+        {
+            if (value > 0) return 1;
+            if (value < 0) return -1;
+            return 0;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double CrossProduct(Vector2 a, Vector2 b)
+        {
+            return a.X * b.Y - a.Y * b.X;
+        }
 
-		public static bool Resolve(Shape shape)
-		{
-			using (var skPath = new SKPath())
-			{
-				shape.Normalize();
-				ShapeToSkiaPath(skPath, shape);
+        /// <summary>
+        /// Resolves any intersections within the shape by subdividing its contours using the Skia library and makes sure its contours have a consistent winding.
+        /// </summary>
+        public static bool Resolve(Shape shape)
+        {
+            using (var skPath = new SKPath())
+            {
+                shape.Normalize();
+                ShapeToSkiaPath(skPath, shape);
 
-				using (var simplifiedPath = skPath.Simplify())
-				{
-					if (simplifiedPath == null)
-						return false;
-					// Note: Skia's AsWinding doesn't seem to work for unknown reasons (from original comment)
-					ShapeFromSkiaPath(shape, simplifiedPath);
-					// In some rare cases, Skia produces tiny residual crossed quadrilateral contours,
-					// which are not valid geometry, so they must be removed.
-					PruneCrossedQuadrilaterals(shape);
-					shape.OrientContours();
-					return true;
-				}
-			}
-		}
-		private static int Sign(double value)
-		{
-			if (value > 0) return 1;
-			if (value < 0) return -1;
-			return 0;
-		}
+                using (var simplifiedPath = skPath.Simplify())
+                {
+                    if (simplifiedPath == null)
+                        return false;
+                    // Note: Skia's AsWinding doesn't seem to work for unknown reasons (from original comment)
+                    ShapeFromSkiaPath(shape, simplifiedPath);
+                    // In some rare cases, Skia produces tiny residual crossed quadrilateral contours,
+                    // which are not valid geometry, so they must be removed.
+                    PruneCrossedQuadrilaterals(shape);
+                    shape.OrientContours();
+                    return true;
+                }
+            }
+        }
 
-		private static double CrossProduct(Vector2 a, Vector2 b)
-		{
-			return a.X * b.Y - a.Y * b.X;
-		}
-	}
+    }
 }
 
 #endif

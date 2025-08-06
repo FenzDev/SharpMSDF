@@ -71,8 +71,8 @@ namespace SharpMSDF.Core
         {
             double crossThreshold = Math.Sin(angleThreshold);
             EdgeColor color = InitColor(ref seed);
-            List<int> corners = new();
-            EdgeSegment[] parts = new EdgeSegment[7];
+
+            Span<EdgeSegment> parts = stackalloc EdgeSegment[7];
 
             foreach (var contour in shape.Contours)
             {
@@ -80,82 +80,96 @@ namespace SharpMSDF.Core
                     continue;
 
                 // Identify corners
-                corners.Clear();
-                Vector2 prevDirection = contour.Edges[^1].Direction(1);
+                IdentifyCorners(ref seed, crossThreshold, ref color, parts, contour);
+            }
+        }
+
+        private static void IdentifyCorners(ref ulong seed, double crossThreshold, ref EdgeColor color, Span<EdgeSegment> parts, Contour contour)
+        {
+            Span<EdgeColor> colors = stackalloc EdgeColor[3];
+            Span<int> corners = stackalloc int[contour.Edges.Count];
+            int cornersCount = 0;
+            Vector2 prevDirection = contour.Edges[^1].Direction(1);
+
+            for (int i = 0; i < contour.Edges.Count; i++)
+            {
+                if (IsCorner(prevDirection.Normalize(), contour.Edges[i].Direction(0).Normalize(), crossThreshold))
+                    corners[cornersCount++] = i;
+                prevDirection = contour.Edges[i].Direction(1);
+            }
+
+            if (cornersCount == 0)
+            {
+                SwitchColor(ref color, ref seed);
                 for (int i = 0; i < contour.Edges.Count; i++)
                 {
-                    if (IsCorner(prevDirection.Normalize(), contour.Edges[i].Direction(0).Normalize(), crossThreshold))
-                        corners.Add(i);
-                    prevDirection = contour.Edges[i].Direction(1);
+                    EdgeSegment edge = contour.Edges[i];
+                    edge.Color = color;
+                    contour.Edges[i] = edge;
                 }
+            }
+            else if (cornersCount == 1)
+            {
+                SwitchColor(ref color, ref seed);
+                colors[0] = color;
+                colors[1] = EdgeColor.White;
+                SwitchColor(ref color, ref seed);
+                colors[2] = color;
+                int corner = corners[0];
 
-                if (corners.Count == 0)
+                if (contour.Edges.Count >= 3)
                 {
-                    SwitchColor(ref color, ref seed);
-                    foreach (var edge in contour.Edges)
-                        edge.Color = color;
-                }
-                else if (corners.Count == 1)
-                {
-                    EdgeColor[] colors = new EdgeColor[3];
-                    SwitchColor(ref color, ref seed);
-                    colors[0] = color;
-                    colors[1] = EdgeColor.White;
-                    SwitchColor(ref color, ref seed);
-                    colors[2] = color;
-                    int corner = corners[0];
-
-                    if (contour.Edges.Count >= 3)
-                    {
-                        int m = contour.Edges.Count;
-                        for (int i = 0; i < m; ++i)
-                            contour.Edges[(corner + i) % m].Color = colors[1 + SymmetricalTrichotomy(i, m)];
-                    }
-                    else if (contour.Edges.Count >= 1)
-                    {
-                        contour.Edges[0].SplitInThirds(out parts[0 + 3 * corner], out parts[1 + 3 * corner], out parts[2 + 3 * corner]);
-                        if (contour.Edges.Count >= 2)
-                        {
-                            contour.Edges[1].SplitInThirds(out parts[3 - 3 * corner], out parts[4 - 3 * corner], out parts[5 - 3 * corner]);
-                            parts[0].Color = parts[1].Color = colors[0];
-                            parts[2].Color = parts[3].Color = colors[1];
-                            parts[4].Color = parts[5].Color = colors[2];
-                        }
-                        else
-                        {
-                            parts[0].Color = colors[0];
-                            parts[1].Color = colors[1];
-                            parts[2].Color = colors[2];
-                        }
-
-                        contour.Edges.Clear();
-                        for (int p = 0; p < parts.Length; p++)
-                        {
-                            EdgeSegment part = parts[p];
-                            if (part != null)
-                                contour.Edges.Add(part);
-                        }
-                    }
-                }
-                else
-                {
-                    int cornerCount = corners.Count;
-                    int spline = 0;
-                    int start = corners[0];
                     int m = contour.Edges.Count;
-                    SwitchColor(ref color, ref seed);
-                    EdgeColor initialColor = color;
-
                     for (int i = 0; i < m; ++i)
                     {
-                        int index = (start + i) % m;
-                        if (spline + 1 < cornerCount && corners[spline + 1] == index)
-                        {
-                            spline++;
-                            SwitchColor(ref color, ref seed, (EdgeColor)((spline == cornerCount - 1) ? (int)initialColor : 0));
-                        }
-                        contour.Edges[index].Color = color;
+                        int v = (corner + i) % m;
+                        EdgeSegment edgeSegment = contour.Edges[v];
+                        edgeSegment.Color = colors[1 + SymmetricalTrichotomy(i, m)];
+                        contour.Edges[v] = edgeSegment;
                     }
+                }
+                else if (contour.Edges.Count >= 1)
+                {
+                    contour.Edges[0].SplitInThirds(out parts[0 + 3 * corner], out parts[1 + 3 * corner], out parts[2 + 3 * corner]);
+                    if (contour.Edges.Count >= 2)
+                    {
+                        contour.Edges[1].SplitInThirds(out parts[3 - 3 * corner], out parts[4 - 3 * corner], out parts[5 - 3 * corner]);
+                        parts[0].Color = parts[1].Color = colors[0];
+                        parts[2].Color = parts[3].Color = colors[1];
+                        parts[4].Color = parts[5].Color = colors[2];
+                    }
+                    else
+                    {
+                        parts[0].Color = colors[0];
+                        parts[1].Color = colors[1];
+                        parts[2].Color = colors[2];
+                    }
+
+                    contour.Edges.Clear();
+                    for (int p = 0; p < parts.Length; p++)
+                    {
+                        //if (parts[p] != null)
+                        contour.Edges.Add(parts[p]);
+                    }
+                }
+            }
+            else
+            {
+                int spline = 0;
+                int start = corners[0];
+                int m = contour.Edges.Count;
+                SwitchColor(ref color, ref seed);
+                EdgeColor initialColor = color;
+
+                for (int i = 0; i < m; ++i)
+                {
+                    int index = (start + i) % m;
+                    if (spline + 1 < cornersCount && corners[spline + 1] == index)
+                    {
+                        spline++;
+                        SwitchColor(ref color, ref seed, (EdgeColor)((spline == cornersCount - 1) ? (int)initialColor : 0));
+                    }
+                    contour.Edges[index] = contour.Edges[index] with { Color = color };
                 }
             }
         }
@@ -172,8 +186,7 @@ namespace SharpMSDF.Core
         {
             double crossThreshold = Math.Sin(angleThreshold);
             EdgeColor color = InitColor(ref seed);
-            List<InkTrapCorner> corners = [];
-
+            
             Span<EdgeColor> colors = stackalloc EdgeColor[3];
 
             for (int ctr = 0; ctr < shape.Contours.Count; ctr++)
@@ -183,142 +196,149 @@ namespace SharpMSDF.Core
                     continue;
 
                 double splineLength = 0;
-                corners.Clear();
+                InkTrapIdentifyCorners(ref seed, crossThreshold, ref color, colors, contour, ref splineLength);
+            }
+        }
 
-                Vector2 prevDirection = contour.Edges[^1].Direction(1);
+        private static void InkTrapIdentifyCorners(ref ulong seed, double crossThreshold, ref EdgeColor color,  Span<EdgeColor> colors, Contour contour, ref double splineLength)
+        {
+            Span<InkTrapCorner> corners = stackalloc InkTrapCorner[contour.Edges.Count];
+            int cornersCount = 0;
+            Vector2 prevDirection = contour.Edges[^1].Direction(1);
+            for (int e = 0; e < contour.Edges.Count; e++)
+            {
+                var edge = contour.Edges[e];
+                if (IsCorner(prevDirection.Normalize(), edge.Direction(0).Normalize(), crossThreshold))
+                {
+                    corners[cornersCount++] = new InkTrapCorner
+                    {
+                        Index = e,
+                        PrevEdgeLengthEstimate = splineLength
+                    };
+                    splineLength = 0;
+                }
+
+                splineLength += EstimateEdgeLength(edge);
+                prevDirection = edge.Direction(1);
+            }
+
+            if (cornersCount == 0)
+            {
+                SwitchColor(ref color, ref seed);
                 for (int e = 0; e < contour.Edges.Count; e++)
+                    contour.Edges[e] = contour.Edges[e] with { Color = color };
+            }
+            else if (cornersCount == 1)
+            {
+                SwitchColor(ref color, ref seed);
+                colors[0] = color;
+                colors[1] = EdgeColor.White;
+                SwitchColor(ref color, ref seed);
+                colors[2] = color;
+
+                int corner = corners[0].Index;
+                if (contour.Edges.Count >= 3)
                 {
-                    var edge = contour.Edges[e];
-                    if (IsCorner(prevDirection.Normalize(), edge.Direction(0).Normalize(), crossThreshold))
-                    {
-                        corners.Add(new InkTrapCorner
-                        {
-                            Index = e,
-                            PrevEdgeLengthEstimate = splineLength
-                        });
-                        splineLength = 0;
-                    }
-
-                    splineLength += EstimateEdgeLength(edge);
-                    prevDirection = edge.Direction(1);
-                }
-
-                if (corners.Count == 0)
-                {
-                    SwitchColor(ref color, ref seed);
-                    for (int e = 0; e < contour.Edges.Count; e++)
-                        contour.Edges[e].Color = color;
-                }
-                else if (corners.Count == 1)
-                {
-                    SwitchColor(ref color, ref seed);
-                    colors[0] = color;
-                    colors[1] = EdgeColor.White;
-                    SwitchColor(ref color, ref seed);
-                    colors[2] = color;
-
-                    int corner = corners[0].Index;
-                    if (contour.Edges.Count >= 3)
-                    {
-                        int m = contour.Edges.Count;
-                        for (int i = 0; i < m; ++i)
-                            contour.Edges[(corner + i) % m].Color = colors[1 + SymmetricalTrichotomy(i, m)];
-                    }
-                    else if (contour.Edges.Count >= 1)
-                    {
-                        EdgeSegment[] parts = new EdgeSegment[7];
-                        contour.Edges[0].SplitInThirds(out parts[0 + 3 * corner], out parts[1 + 3 * corner], out parts[2 + 3 * corner]);
-                        if (contour.Edges.Count >= 2)
-                        {
-                            contour.Edges[1].SplitInThirds(out parts[3 - 3 * corner], out parts[4 - 3 * corner], out parts[5 - 3 * corner]);
-                            parts[0].Color = parts[1].Color = colors[0];
-                            parts[2].Color = parts[3].Color = colors[1];
-                            parts[4].Color = parts[5].Color = colors[2];
-                        }
-                        else
-                        {
-                            parts[0].Color = colors[0];
-                            parts[1].Color = colors[1];
-                            parts[2].Color = colors[2];
-                        }
-
-                        contour.Edges.Clear();
-                        foreach (var part in parts)
-                        {
-                            if (part != null)
-                                contour.Edges.Add(part);
-                        }
-                    }
-                }
-                else
-                {
-                    InkTrapCorner corner;
-                    int cornerCount = corners.Count;
-                    int majorCornerCount = cornerCount;
-
-                    if (cornerCount > 3)
-                    {
-                        corner = corners[0];
-                        corner.PrevEdgeLengthEstimate += splineLength;
-                        corners[0] = corner;
-                        for (int i = 0; i < cornerCount; i++)
-                        {
-                            double a = corners[i].PrevEdgeLengthEstimate;
-                            double b = corners[(i + 1) % cornerCount].PrevEdgeLengthEstimate;
-                            double c = corners[(i + 2) % cornerCount].PrevEdgeLengthEstimate;
-
-                            if (a > b && b < c)
-                            {
-                                corner = corners[i];
-                                corner.Minor = true;
-                                majorCornerCount--;
-                                corners[i] = corner;
-                            }
-                        }
-                    }
-
-                    EdgeColor initialColor = EdgeColor.Black;
-                    for (int i = 0; i < cornerCount; i++)
-                    {
-                        if (!corners[i].Minor)
-                        {
-                            majorCornerCount--;
-                            SwitchColor(ref color, ref seed, majorCornerCount==0 ? initialColor : 0);
-                            corner = corners[i];
-                            corner.Color = color;
-                            corners[i] = corner;
-                            if (initialColor == EdgeColor.Black)
-                                initialColor = color;
-                        }
-                    }
-
-                    for (int i = 0; i < cornerCount; i++)
-                    {
-                        if (corners[i].Minor)
-                        {
-                            EdgeColor nextColor = corners[(i + 1) % cornerCount].Color;
-                            corner = corners[i];
-                            corner.Color = (EdgeColor)((int)(color & nextColor) ^ (int)EdgeColor.White);
-                            corners[i] = corner;
-                        }
-                        else
-                        {
-                            color = corners[i].Color;
-                        }
-                    }
-
-                    int spline = 0;
-                    int start = corners[0].Index;
-                    color = corners[0].Color;
                     int m = contour.Edges.Count;
-
                     for (int i = 0; i < m; ++i)
                     {
-                        int index = (start + i) % m;
-                        if (spline + 1 < cornerCount && corners[spline + 1].Index == index)
-                            color = corners[++spline].Color;
-                        contour.Edges[index].Color = color;
+                        int v = (corner + i) % m;
+                        contour.Edges[v] = contour.Edges[v] with { Color = colors[1 + SymmetricalTrichotomy(i, m)] };
                     }
+                }
+                else if (contour.Edges.Count >= 1)
+                {
+                    EdgeSegment[] parts = new EdgeSegment[7];
+                    contour.Edges[0].SplitInThirds(out parts[0 + 3 * corner], out parts[1 + 3 * corner], out parts[2 + 3 * corner]);
+                    if (contour.Edges.Count >= 2)
+                    {
+                        contour.Edges[1].SplitInThirds(out parts[3 - 3 * corner], out parts[4 - 3 * corner], out parts[5 - 3 * corner]);
+                        parts[0].Color = parts[1].Color = colors[0];
+                        parts[2].Color = parts[3].Color = colors[1];
+                        parts[4].Color = parts[5].Color = colors[2];
+                    }
+                    else
+                    {
+                        parts[0].Color = colors[0];
+                        parts[1].Color = colors[1];
+                        parts[2].Color = colors[2];
+                    }
+
+                    contour.Edges.Clear();
+                    foreach (var part in parts)
+                    {
+                        //if (part != null)
+                            contour.Edges.Add(part);
+                    }
+                }
+            }
+            else
+            {
+                InkTrapCorner corner;
+                int majorCornerCount = cornersCount;
+
+                if (cornersCount > 3)
+                {
+                    corner = corners[0];
+                    corner.PrevEdgeLengthEstimate += splineLength;
+                    corners[0] = corner;
+                    for (int i = 0; i < cornersCount; i++)
+                    {
+                        double a = corners[i].PrevEdgeLengthEstimate;
+                        double b = corners[(i + 1) % cornersCount].PrevEdgeLengthEstimate;
+                        double c = corners[(i + 2) % cornersCount].PrevEdgeLengthEstimate;
+
+                        if (a > b && b < c)
+                        {
+                            corner = corners[i];
+                            corner.Minor = true;
+                            majorCornerCount--;
+                            corners[i] = corner;
+                        }
+                    }
+                }
+
+                EdgeColor initialColor = EdgeColor.Black;
+                for (int i = 0; i < cornersCount; i++)
+                {
+                    if (!corners[i].Minor)
+                    {
+                        majorCornerCount--;
+                        SwitchColor(ref color, ref seed, majorCornerCount == 0 ? initialColor : 0);
+                        corner = corners[i];
+                        corner.Color = color;
+                        corners[i] = corner;
+                        if (initialColor == EdgeColor.Black)
+                            initialColor = color;
+                    }
+                }
+
+                for (int i = 0; i < cornersCount; i++)
+                {
+                    if (corners[i].Minor)
+                    {
+                        EdgeColor nextColor = corners[(i + 1) % cornersCount].Color;
+                        corner = corners[i];
+                        corner.Color = (EdgeColor)((int)(color & nextColor) ^ (int)EdgeColor.White);
+                        corners[i] = corner;
+                    }
+                    else
+                    {
+                        color = corners[i].Color;
+                    }
+                }
+
+                int spline = 0;
+                int start = corners[0].Index;
+                color = corners[0].Color;
+                int m = contour.Edges.Count;
+
+                for (int i = 0; i < m; ++i)
+                {
+                    int index = (start + i) % m;
+                    if (spline + 1 < cornersCount && corners[spline + 1].Index == index)
+                        color = corners[++spline].Color;
+                    contour.Edges[index] = contour.Edges[index] with { Color = color };
                 }
             }
         }

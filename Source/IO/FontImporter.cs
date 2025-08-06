@@ -110,8 +110,6 @@ namespace SharpMSDF.IO
 
         /// <summary>
         /// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
-        /// returning its advance (in the same 1/64 units) and the ideal
-        /// Only TrueType outlines (glyf table) are supported.
         /// </summary>
         public static Shape LoadGlyph(
             Typeface typeface,
@@ -193,7 +191,7 @@ namespace SharpMSDF.IO
                             var c0 = ToShapeSpace(currentOn);
                             var c1 = ToShapeSpace(pendingOff.Value);
                             var c2 = ToShapeSpace(pt);
-                            contour.Edges.Add(new QuadraticSegment(
+                            contour.Edges.Add(new (
                                 new Vector2((float)c0.X, (float)c0.Y),
                                 new Vector2((float)c1.X, (float)c1.Y),
                                 new Vector2((float)c2.X, (float)c2.Y),
@@ -206,7 +204,7 @@ namespace SharpMSDF.IO
                         {
                             var c0 = ToShapeSpace(currentOn);
                             var c1 = ToShapeSpace(pt);
-                            contour.Edges.Add(new LinearSegment(
+                            contour.Edges.Add(new (
                                 new Vector2((float)c0.X, (float)c0.Y),
                                 new Vector2((float)c1.X, (float)c1.Y)
                             ));
@@ -230,7 +228,7 @@ namespace SharpMSDF.IO
                             var c0 = ToShapeSpace(currentOn);
                             var c1 = ToShapeSpace(lastOff);
                             var c2 = ToShapeSpace(implied);
-                            contour.Edges.Add(new QuadraticSegment(
+                            contour.Edges.Add(new (
                                 new Vector2((float)c0.X, (float)c0.Y),
                                 new Vector2((float)c1.X, (float)c1.Y),
                                 new Vector2((float)c2.X, (float)c2.Y),
@@ -249,7 +247,7 @@ namespace SharpMSDF.IO
                     var c0 = ToShapeSpace(currentOn);
                     var c1 = ToShapeSpace(pendingOff.Value);
                     var c2 = ToShapeSpace(firstPt);
-                    contour.Edges.Add(new QuadraticSegment(
+                    contour.Edges.Add(new (
                         new Vector2((float)c0.X, (float)c0.Y),
                         new Vector2((float)c1.X, (float)c1.Y),
                         new Vector2((float)c2.X, (float)c2.Y),
@@ -260,7 +258,7 @@ namespace SharpMSDF.IO
                 {
                     var c0 = ToShapeSpace(currentOn);
                     var c1 = ToShapeSpace(firstPt);
-                    contour.Edges.Add(new LinearSegment(
+                    contour.Edges.Add(new (
                         new Vector2((float)c0.X, (float)c0.Y),
                         new Vector2((float)c1.X, (float)c1.Y)
                     ));

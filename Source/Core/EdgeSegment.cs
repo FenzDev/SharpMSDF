@@ -14,6 +14,7 @@ namespace SharpMSDF.Core
         public const int MSDFGEN_CUBIC_SEARCH_STARTS = 4;
         public const int MSDFGEN_CUBIC_SEARCH_STEPS = 4;
 
+        public bool IsAssigned;
         public readonly Bezier EdgeType;
         public EdgeColor Color;
         public Vector2 P0;
@@ -62,7 +63,10 @@ namespace SharpMSDF.Core
             P2 = p2;
             P3 = p3;
         }
-        private EdgeSegment(EdgeColor c) => Color = c;
+        private EdgeSegment(EdgeColor c)
+        {
+            IsAssigned = true; Color = c;
+        }
 
         public readonly Vector2 this[int i] => i == 0 ? P0 : i == 1 ? P1 : i == 2 ? P2 : P3;
 
@@ -615,5 +619,6 @@ namespace SharpMSDF.Core
                 }
             }
         }
+
     }
 }

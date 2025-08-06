@@ -58,7 +58,7 @@ namespace SharpMSDF.Core
                     for (int j = 0; j < contour.Edges.Count; j++)
                     {
                         var edge = contour.Edges[j];
-                        if (edge == null || edge.Point(0) != corner)
+                        if (/*edge == null || */edge.Point(0) != corner)
                             return false;
                         corner = edge.Point(1);
                     }
@@ -69,20 +69,19 @@ namespace SharpMSDF.Core
 
         private static void DeconvergeEdge(EdgeSegment edgeSegment, int param, Vector2 vector)
         {
-            switch (edgeSegment.Type())
+            switch (edgeSegment.EdgeType)
             {
-                case QuadraticSegment.EDGE_TYPE:
-                    edgeSegment = ((QuadraticSegment)edgeSegment).ConvertToCubic();
-                    goto case CubicSegment.EDGE_TYPE;
-                case CubicSegment.EDGE_TYPE:
-                    Span<Vector2> p = ((CubicSegment)edgeSegment).P;
+                case Bezier.Quadratic:
+                    edgeSegment = edgeSegment.ConvertToCubic();
+                    goto case Bezier.Cubic;
+                case Bezier.Cubic:
                     switch (param)
                     {
                         case 0:
-                            p[1] += (p[1] - p[0]).Length() * vector;
+                            edgeSegment.P1 += (edgeSegment.P1 - edgeSegment.P0).Length() * vector;
                             break;
                         case 1:
-                            p[2] += (p[2] - p[3]).Length() * vector;
+                            edgeSegment.P2 += (edgeSegment.P2 - edgeSegment.P3).Length() * vector;
                             break;
                     }
                     break;

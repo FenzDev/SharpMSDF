@@ -108,7 +108,7 @@ namespace SharpMSDF.Core
         {
             _minNegPerp = -Math.Abs(_minTrueDistance.Distance);
             _minPosPerp = Math.Abs(_minTrueDistance.Distance);
-            _nearEdge = null;
+            _nearEdge = default;
             _nearEdgeParam = 0;
         }
 
@@ -132,7 +132,7 @@ namespace SharpMSDF.Core
             _minTrueDistance.Distance += Arithmetic.NonZeroSign(_minTrueDistance.Distance) * delta;
             _minNegPerp = -Math.Abs(_minTrueDistance.Distance);
             _minPosPerp = Math.Abs(_minTrueDistance.Distance);
-            _nearEdge = null;
+            _nearEdge = default;
             _nearEdgeParam = 0;
         }
 
@@ -186,7 +186,7 @@ namespace SharpMSDF.Core
         internal double ComputeDistance(Vector2 p)
         {
             double best = _minTrueDistance.Distance < 0 ? _minNegPerp : _minPosPerp;
-            if (_nearEdge != null)
+            if (_nearEdge.IsAssigned)
             {
                 var sd = _minTrueDistance;
                 _nearEdge.DistanceToPerpendicularDistance(ref sd, p, _nearEdgeParam);

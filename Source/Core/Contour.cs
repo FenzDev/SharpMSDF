@@ -20,12 +20,6 @@ namespace SharpMSDF.Core
             Edges.Add(edge);
         }
 
-        public EdgeSegment AddEdge()
-        {
-            Edges.Add(null!); // Will be assigned later
-            return Edges[^1];
-        }
-
         private static void BoundPoint(ref double l, ref double b, ref double r, ref double t, Vector2 p)
         {
             if (p.X < l) l = p.X;

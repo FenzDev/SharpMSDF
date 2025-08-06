@@ -122,7 +122,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Loads all glyphs in a charset (Charset elements are Unicode codepoints), returns the number of successfully loaded glyphs
         /// </summary>
-        public int LoadCharset(Typeface face, double fontScale, Charset charset, bool preprocessGeometry = true, bool enableKerning = true)
+        public int LoadCharset(Typeface face, double fontScale, ReadOnlySpan<char> charset, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == rangeEnd && LoadMetrics(face, fontScale)))
                 return -1;

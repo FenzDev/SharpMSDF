@@ -10,16 +10,12 @@
 
 	<ItemGroup>
 		<!--Hide the base project code-->
-		<Compile Include="Core;Atlas;IO">
+		<Compile Include="Core/;Atlas/;IO/;Typography.OpenFont/">
 			<Visible>false</Visible>
 		</Compile>
 	</ItemGroup>
 
 	<ItemGroup>
 	  <PackageReference Include="SkiaSharp" Version="3.119.0" />
-		<PackageReference Include="SkiaSharp.NativeAssets.Win32"
-						  Version="3.119.0">
-			<PrivateAssets>all</PrivateAssets>
-		</PackageReference>
 	</ItemGroup>
 </Project>

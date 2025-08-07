@@ -13,36 +13,36 @@ namespace SharpMSDF.Atlas
 	{
 		public static void Scanline(BitmapRef<float> output, GlyphGeometry glyph, GeneratorAttributes attribs)
 		{
-			Rasterization.Rasterize(output, glyph.GetShape(), new(new(glyph.GetBoxScale()), glyph.GetBoxTranslate()), FillRule.FILL_NONZERO);
+			Rasterization.Rasterize(output, glyph.Shape, new(new(glyph.GetBoxScale()), glyph.GetBoxTranslate()), FillRule.FILL_NONZERO);
 		}
 
 		public static void Sdf(BitmapRef<float> output, GlyphGeometry glyph, GeneratorAttributes attribs)
 		{
-			MSDFGen.GenerateSDF(output, glyph.GetShape(), new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), attribs.Config);
+			MSDFGen.GenerateSDF(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), attribs.Config);
 			if (attribs.ScanlinePass)
-				Rasterization.DistanceSignCorrection(output, glyph.GetShape(), glyph.GetBoxProjection(), FillRule.FILL_NONZERO);
+				Rasterization.DistanceSignCorrection(output, glyph.Shape, glyph.GetBoxProjection(), FillRule.FILL_NONZERO);
 		}
 
 		public static void psdfGenerator(BitmapRef<float> output, GlyphGeometry glyph, GeneratorAttributes attribs)
 		{
-			MSDFGen.GeneratePSDF(output, glyph.GetShape(), new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), attribs.Config);
+			MSDFGen.GeneratePSDF(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), attribs.Config);
 			if (attribs.ScanlinePass)
-				Rasterization.DistanceSignCorrection(output, glyph.GetShape(), glyph.GetBoxProjection(), FillRule.FILL_NONZERO);
+				Rasterization.DistanceSignCorrection(output, glyph.Shape, glyph.GetBoxProjection(), FillRule.FILL_NONZERO);
 		}
 		public static void Msdf(BitmapRef<float> output, GlyphGeometry glyph, GeneratorAttributes attribs)
 		{
 			MSDFGeneratorConfig config = attribs.Config;
 			if (attribs.ScanlinePass)
 				config.ErrorCorrection.Mode = ErrorCorrectionConfig.OpMode.DISABLED;
-			MSDFGen.GenerateMSDF(output, glyph.GetShape(), new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
+			MSDFGen.GenerateMSDF(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
 			if (attribs.ScanlinePass)
 			{
-				Rasterization.DistanceSignCorrection(output, glyph.GetShape(), glyph.GetBoxProjection(), FillRule.FILL_NONZERO);
-				if (attribs.Config.ErrorCorrection.Mode != ErrorCorrectionConfig.OpMode.DISABLED)
+				Rasterization.DistanceSignCorrection(output, glyph.Shape, glyph.GetBoxProjection(), FillRule.FILL_NONZERO);
+				if (attribs.Config.ErrorCorrection.Mode != OpMode.DISABLED)
 				{
 					config.ErrorCorrection.Mode = attribs.Config.ErrorCorrection.Mode;
-					config.ErrorCorrection.DistanceCheckMode = ErrorCorrectionConfig.ConfigDistanceCheckMode.DO_NOT_CHECK_DISTANCE;
-					MSDFErrorCorrection.ErrorCorrection(output, glyph.GetShape(), new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
+					config.ErrorCorrection.DistanceCheckMode = ConfigDistanceCheckMode.DO_NOT_CHECK_DISTANCE;
+					MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
 				}
 			}
 		}
@@ -51,16 +51,16 @@ namespace SharpMSDF.Atlas
 		{
 			MSDFGeneratorConfig config = attribs.Config;
 			if (attribs.ScanlinePass)
-				config.ErrorCorrection.Mode = ErrorCorrectionConfig.OpMode.DISABLED;
-			MSDFGen.GenerateMTSDF(output, glyph.GetShape(), new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
+				config.ErrorCorrection.Mode = OpMode.DISABLED;
+			MSDFGen.GenerateMTSDF(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
 			if (attribs.ScanlinePass)
 			{
-				Rasterization.DistanceSignCorrection(output, glyph.GetShape(), glyph.GetBoxProjection(), FillRule.FILL_NONZERO);
-				if (attribs.Config.ErrorCorrection.Mode != ErrorCorrectionConfig.OpMode.DISABLED)
+				Rasterization.DistanceSignCorrection(output, glyph.Shape, glyph.GetBoxProjection(), FillRule.FILL_NONZERO);
+				if (attribs.Config.ErrorCorrection.Mode != OpMode.DISABLED)
 				{
 					config.ErrorCorrection.Mode = attribs.Config.ErrorCorrection.Mode;
-					config.ErrorCorrection.DistanceCheckMode = ErrorCorrectionConfig.ConfigDistanceCheckMode.DO_NOT_CHECK_DISTANCE;
-					MSDFErrorCorrection.ErrorCorrection(output, glyph.GetShape(), new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
+					config.ErrorCorrection.DistanceCheckMode = ConfigDistanceCheckMode.DO_NOT_CHECK_DISTANCE;
+					MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
 				}
 			}
 		}

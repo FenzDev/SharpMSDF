@@ -24,7 +24,7 @@ namespace SharpMSDF.Atlas
 		private Shape.Bounds _bounds;
 		private double _advance;
 		private ushort _index;
-		private readonly Shape _shape;
+		public Shape Shape;
 
 		private struct BoxData
 		{
@@ -39,57 +39,57 @@ namespace SharpMSDF.Atlas
 
 		public GlyphGeometry() { }
 
-		public bool Load(Typeface font, , double geometryScale, uint codepoint, bool preprocessGeometry = true)
-		{
-			if (font == null)
-				return false;
+//		public bool Load(Typeface font, uint glyph, double geometryScale, uint codepoint, bool preprocessGeometry = true)
+//		{
+//			if (font == null)
+//				return false;
 
 
-			FontImporter.LoadGlyph(font, codepoint, FontCoordinateScaling.None, out var _shape, ref _advance);
+//			FontImporter.LoadGlyph(font, codepoint, FontCoordinateScaling.None, out var _shape, ref _advance);
 
-			if (_shape.Validate())
-			{
-				_index = font.GetGlyphIndex((int)codepoint);
-				_geometryScale = geometryScale;
-				_codepoint = codepoint;
-				_advance *= geometryScale;
+//			if (_shape.Validate())
+//			{
+//				_index = font.GetGlyphIndex((int)codepoint);
+//				_geometryScale = geometryScale;
+//				_codepoint = codepoint;
+//				_advance *= geometryScale;
 
-#if MSDFGEN_USE_SKIA
-		if (preprocessGeometry)
-		{
-			ResolveShapeGeometry.Resolve(_shape);
-		}
-#endif
+//#if MSDFGEN_USE_SKIA
+//		if (preprocessGeometry)
+//		{
+//			ResolveShapeGeometry.Resolve(_shape);
+//		}
+//#endif
 
-				_shape.Normalize();
-				_bounds = _shape.GetBounds();
+//				_shape.Normalize();
+//				_bounds = _shape.GetBounds();
 
-#if MSDFGEN_USE_SKIA
-		if (!preprocessGeometry)
-#endif
-				{
-					var outerPoint = new Vector2(
-						_bounds.l - (_bounds.r - _bounds.l) - 1,
-						_bounds.b - (_bounds.t - _bounds.b) - 1
-					);
+//#if MSDFGEN_USE_SKIA
+//		if (!preprocessGeometry)
+//#endif
+//				{
+//					var outerPoint = new Vector2(
+//						_bounds.l - (_bounds.r - _bounds.l) - 1,
+//						_bounds.b - (_bounds.t - _bounds.b) - 1
+//					);
 
-					if (SimpleTrueShapeDistanceFinder.OneShotDistance(_shape, outerPoint) > 0)
-					{
-						foreach (var contour in _shape.Contours)
-							contour.Reverse();
-					}
+//					if (SimpleTrueShapeDistanceFinder.OneShotDistance(_shape, outerPoint) > 0)
+//					{
+//						foreach (var contour in _shape.Contours)
+//							contour.Reverse();
+//					}
 
-					_shape.OrientContours();
-				}
+//					_shape.OrientContours();
+//				}
 
-				return true;
-			}
-			return false;
-		}
+//				return true;
+//			}
+//			return false;
+//		}
 
 		public void EdgeColoring(Action<Shape, double, ulong> coloringFunc, double angleThreshold, ulong seed)
 		{
-			coloringFunc?.Invoke(_shape, angleThreshold, seed);
+			coloringFunc?.Invoke(Shape, angleThreshold, seed);
 		}
 
 		public void WrapBox(GlyphAttributes glyphAttributes)
@@ -109,7 +109,7 @@ namespace SharpMSDF.Atlas
 				double t = _bounds.t - range.Lower;
 
 				if (glyphAttributes.MiterLimit > 0)
-					_shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
+					Shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
 
 				l -= fullPadding.L; b -= fullPadding.B;
 				r += fullPadding.R; t += fullPadding.T;
@@ -176,7 +176,7 @@ namespace SharpMSDF.Atlas
 				double t = _bounds.t - range.Lower;
 
 				if (glyphAttributes.MiterLimit > 0)
-					_shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
+					Shape.BoundMiters(ref l, ref b, ref r, ref t, -range.Lower, glyphAttributes.MiterLimit, 1);
 
 				l -= fullPadding.L; b -= fullPadding.B;
 				r += fullPadding.R; t += fullPadding.T;
@@ -315,9 +315,7 @@ namespace SharpMSDF.Atlas
 				l = b = r = t = 0;
 		}
 
-		public bool IsWhitespace() => _shape.Contours.Count == 0;
-
-		public readonly Shape GetShape() => _shape;
+		public bool IsWhitespace() => Shape.Contours.Count == 0;
 
 		public static implicit operator GlyphBox(GlyphGeometry geometry)
 		{

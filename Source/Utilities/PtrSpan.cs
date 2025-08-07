@@ -12,7 +12,7 @@ namespace SharpMSDF.Utilities
         public PtrSpan(T* dataPtr, int capacity, int count)
         {
 #if DEBUG
-            if ((uint)count >= (uint)capacity) throw new IndexOutOfRangeException();
+            if ((uint)count > (uint)capacity) throw new IndexOutOfRangeException();
 #endif
             Data = dataPtr;
             Capacity = capacity;
@@ -33,12 +33,13 @@ namespace SharpMSDF.Utilities
         public static void Push(ref PtrSpan<T> span, T value)
         {
             span = new PtrSpan<T>(span.Data, span.Capacity, span.Count + 1);
-            span[span.Count] = value;
+            span[span.Count-1] = value;
         }
         public static T Pop(ref PtrSpan<T> span)
         {
+            T elm = span[span.Count - 1];
             span = new PtrSpan<T>(span.Data, span.Capacity, span.Count - 1);
-            return span[span.Count];
+            return elm;
         }
         public static void Clear(ref PtrSpan<T> span)
         {

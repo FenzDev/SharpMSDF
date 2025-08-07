@@ -3,7 +3,7 @@ using System;
 
 namespace SharpMSDF.Core
 {
-    public class DistanceMapping
+    public struct DistanceMapping
     {
         // Explicitly designates value as distance delta rather than an absolute distance.
         public class Delta

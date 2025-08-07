@@ -2,7 +2,7 @@
 
 namespace SharpMSDF.Core
 {
-    public class Projection
+    public struct Projection
     {
         public Projection() 
         {

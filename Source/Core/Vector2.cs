@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace SharpMSDF.Core
@@ -29,18 +30,17 @@ namespace SharpMSDF.Core
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Equals(Vector2 other)
+        public readonly bool Equals(Vector2 other)
         {
             return X.Equals(other.X) && Y.Equals(other.Y);
         }
 
-        public override bool Equals(object obj)
+        public readonly override bool Equals([NotNullWhen(true)] object? obj)
         {
-            if (ReferenceEquals(null, obj)) return false;
             return obj is Vector2 other && Equals(other);
         }
 
-        public override int GetHashCode()
+        public readonly override int GetHashCode()
         {
             unchecked
             {
@@ -50,14 +50,14 @@ namespace SharpMSDF.Core
 
         /// Returns the vector's length.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public double Length()
+        public readonly double Length()
         {
             return Math.Sqrt(X * X + Y * Y);
         }
 
         /// Returns the normalized vector - one that has the same direction but unit length.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector2 Normalize(bool allowZero = false) {
+        public readonly Vector2 Normalize(bool allowZero = false) {
             double len = Length();
             if (len != 0)
                 return new (X / len, Y / len);
@@ -66,7 +66,7 @@ namespace SharpMSDF.Core
 
     /// Returns a vector with unit length that is orthogonal to this one
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector2 GetOrthonormal(bool polarity = true, bool allowZero = false) 
+        public readonly Vector2 GetOrthonormal(bool polarity = true, bool allowZero = false) 
         {
             double len = Length();
             if (len != 0)
@@ -75,13 +75,13 @@ namespace SharpMSDF.Core
         }
 
 
-    /// Returns a vector with the same length that is orthogonal to this one.
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector2 GetOrthogonal(bool polarity = true) {
+        /// Returns a vector with the same length that is orthogonal to this one.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly Vector2 GetOrthogonal(bool polarity = true) {
             return polarity? new (-Y, X) : new (Y, -X);
         }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator !(Vector2 lhs)
         {
             return lhs.X == 0 && lhs.Y == 0;

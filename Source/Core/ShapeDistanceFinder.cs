@@ -20,7 +20,7 @@ namespace SharpMSDF.Core
         {
             this.Shape = shape;
             ContourCombiner = new TCombiner();
-            ContourCombiner.NonCtorInit(shape);
+            ContourCombiner.NonCtorInit(ref shape);
             ShapeEdgeCache = new EdgeCache[shape.EdgeCount()];
         }
 
@@ -64,7 +64,7 @@ namespace SharpMSDF.Core
         public unsafe static TDistance OneShotDistance(Shape shape, Vector2 origin)
         {
             var combiner = new TCombiner();
-            combiner.NonCtorInit(shape);
+            combiner.NonCtorInit(ref shape);
             combiner.Reset(origin);
 
             for (int i = 0; i < shape.Contours.Count; ++i)

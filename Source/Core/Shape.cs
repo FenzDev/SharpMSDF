@@ -108,7 +108,7 @@ namespace SharpMSDF.Core
                 }
                 else
                 {
-                    EdgeSegment prevEdge = contour.Edges[contour.Edges.Count];
+                    EdgeSegment prevEdge = contour.Edges[contour.Edges.Count - 1];
                     for (int i = 0; i < contour.Edges.Count; i++)
                     {
                         EdgeSegment edge = contour.Edges[i];

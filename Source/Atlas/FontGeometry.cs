@@ -79,11 +79,12 @@ namespace SharpMSDF.Atlas
             for (ushort index = rangeStart; index < rangeEnd; ++index)
             {
                 var glyph = new GlyphGeometry();
-                if (glyph.Load(font, geometryScale, index, preprocessGeometry))
-                {
-                    AddGlyph(glyph);
-                    ++loaded;
-                }
+                // TODO: To be fixed
+                //if (glyph.Load(font, geometryScale, index, preprocessGeometry))
+                //{
+                //    AddGlyph(glyph);
+                //    ++loaded;
+                //}
             }
 
             if (enableKerning)
@@ -105,11 +106,12 @@ namespace SharpMSDF.Atlas
             foreach (uint index in glyphset)
             {
                 var glyph = new GlyphGeometry();
-                if (glyph.Load(face, geometryScale, index, preprocessGeometry))
-                {
-                    AddGlyph(glyph);
-                    ++loaded;
-                }
+                // TODO: To be fixed
+                //if (glyph.Load(face, geometryScale, index, preprocessGeometry))
+                //{
+                //    AddGlyph(glyph);
+                //    ++loaded;
+                //}
             }
 
             if (enableKerning)
@@ -131,11 +133,12 @@ namespace SharpMSDF.Atlas
             foreach (uint cp in charset)
             {
                 var glyph = new GlyphGeometry();
-                if (glyph.Load(face, geometryScale, cp, preprocessGeometry))
-                {
-                    AddGlyph(glyph);
-                    ++loaded;
-                }
+                // TODO : To be fixed
+                //if (glyph.Load(face, geometryScale, cp, preprocessGeometry))
+                //{
+                //    AddGlyph(glyph);
+                //    ++loaded;
+                //}
             }
 
             if (enableKerning)

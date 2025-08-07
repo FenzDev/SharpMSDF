@@ -8,11 +8,14 @@
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-	<ItemGroup>
+	<ItemGroup >
 		<!--Hide the base project code-->
-		<Compile Include="Core/;Atlas/;IO/;Typography.OpenFont/">
+		<None Include="Core/**">
 			<Visible>false</Visible>
-		</Compile>
+		</None>
+		<None Include="Core">
+			<Visible>false</Visible>
+		</None>
 	</ItemGroup>
 
 	<ItemGroup>

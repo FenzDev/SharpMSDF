@@ -52,45 +52,41 @@
             Arithmetic.Median(d.R, d.G, d.B); // or include A as needed
     }
 
-    public abstract class ContourCombiner<TDistanceSelector, TDistance>
+    public interface IContourCombiner<TDistanceSelector, TDistance>
     {
-        public ContourCombiner() { }
-        public virtual void NonCtorInit(Shape shape) { }
-        public abstract void Reset(Vector2 origin);
-        public abstract TDistanceSelector EdgeSelector(int contourIndex);
-        public abstract TDistance Distance();
+        public virtual void NonCtorInit(ref Shape shape) { }
+        public void Reset(Vector2 origin);
+        public TDistanceSelector EdgeSelector(int contourIndex);
+        public TDistance Distance();
     }
 
 
     /// <summary>
     /// Simply selects the nearest contour.
     /// </summary>
-    public class SimpleContourCombiner<TDistanceSelector, TDistance> : ContourCombiner<TDistanceSelector, TDistance>
+    public struct SimpleContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
     where TDistanceSelector : IDistanceSelector<TDistance>, new()
     {
-        private TDistanceSelector shapeEdgeSelector = new();
+        private readonly TDistanceSelector shapeEdgeSelector = new();
 
         public SimpleContourCombiner() { }
         public SimpleContourCombiner(Shape shape){ }
 
-        public override void Reset(Vector2 p)
+        public void Reset(Vector2 p)
         {
             shapeEdgeSelector.Reset(p);
         }
 
-        public override TDistanceSelector EdgeSelector(int i)
-        {
-            return shapeEdgeSelector;
-        }
+        public readonly TDistanceSelector EdgeSelector(int i) => shapeEdgeSelector;
 
-        public override TDistance Distance() => shapeEdgeSelector.Distance();
+        public TDistance Distance() => shapeEdgeSelector.Distance();
 
     }
 
     /// <summary>
     /// Selects the nearest contour that actually forms a border between filled and unfilled area.
     /// </summary>
-    public class OverlappingContourCombiner<TDistanceSelector, TDistance> : ContourCombiner<TDistanceSelector, TDistance>
+    public struct OverlappingContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
     where TDistanceSelector : IDistanceSelector<TDistance>, new()
     {
         private Vector2 p;
@@ -99,31 +95,32 @@
 
         public OverlappingContourCombiner() {}
 
-        public OverlappingContourCombiner(Shape shape) 
+        public OverlappingContourCombiner(ref Shape shape) 
         {
-            NonCtorInit(shape);
+            NonCtorInit(ref shape);
         }
 
-        public override void NonCtorInit(Shape shape)
+        public void NonCtorInit(ref Shape shape)
         {
-            foreach (var contour in shape.Contours)
+            for (int c = 0; c < shape.Contours.Count; c++)
             {
-                windings.Add(contour.Winding());
+
+                windings.Add(shape.Contours[c].Winding());
                 edgeSelectors.Add(new TDistanceSelector());
             }
         }
 
-        public override void Reset(Vector2 p)
+        public void Reset(Vector2 p)
         {
             this.p = p;
             foreach (var selector in edgeSelectors)
                 selector.Reset(p);
         }
 
-        public override TDistanceSelector EdgeSelector(int i) => edgeSelectors[i];
+        public TDistanceSelector EdgeSelector(int i) => edgeSelectors[i];
 
 
-        public override TDistance Distance()
+        public TDistance Distance()
         {
             int contourCount = edgeSelectors.Count;
 

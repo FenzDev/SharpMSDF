@@ -64,7 +64,7 @@ namespace SharpMSDF.Core
         /// </summary>
         public unsafe static void GenerateDistanceField<TCombiner, TConverter, TDistanceSelector, TDistance>(BitmapRefSingle output, Shape shape, SDFTransformation transformation) 
             where TDistanceSelector : IDistanceSelector<TDistance>, new() 
-            where TCombiner : ContourCombiner<TDistanceSelector, TDistance>, new()
+            where TCombiner : IContourCombiner<TDistanceSelector, TDistance>, new()
             where TConverter : DistancePixelConversion<TDistance>, new()
         {
             // 1. Create the converter 
@@ -133,12 +133,17 @@ namespace SharpMSDF.Core
         public static void GenerateMSDF(BitmapRefMulti output, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config = default)
         {
             if (config.OverlapSupport)
+            {
                 GenerateDistanceField<OverlappingContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
                     (output, shape, transformation);
+                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(output, shape, transformation, config);
+            }
             else
+            {
                 GenerateDistanceField<SimpleContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
                     (output, shape, transformation);
-            MSDFErrorCorrection.ErrorCorrection(output, shape, transformation, config);
+                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, double>>(output, shape, transformation, config);
+            }
         }
 
         /// <summary>
@@ -147,12 +152,17 @@ namespace SharpMSDF.Core
         public static void GenerateMTSDF(BitmapRefMultiAndTrue output, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config = default)
         {
             if (config.OverlapSupport)
+            {
                 GenerateDistanceField<OverlappingContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
                     (output, shape, transformation);
+                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(output, shape, transformation, config);
+            }
             else
+            {
                 GenerateDistanceField<SimpleContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
                     (output, shape, transformation);
-            MSDFErrorCorrection.ErrorCorrection(output, shape, transformation, config);
+                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, double>>(output, shape, transformation, config);
+            }
         }
 
 

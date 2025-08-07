@@ -7,8 +7,8 @@
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup >
-	  <Compile Remove="SkiaSharp/**/*.cs"/>
+  <ItemGroup>
+	  <Compile Remove="SkiaSharp/**/*.cs" />
   </ItemGroup>
 
 </Project>

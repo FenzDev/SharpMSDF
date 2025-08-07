@@ -142,6 +142,7 @@ namespace SharpMSDF.Demo
             double angleThereshold = 3.0;
 
             // Load the glyph
+            
             var shape = FontImporter.LoadGlyph(font, '#', FontCoordinateScaling.EmNormalized);
             var msdf = new Bitmap<float>(scale, scale, 3);
 

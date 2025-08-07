@@ -1,4 +1,5 @@
 
+using SharpMSDF.Utilities;
 using System.ComponentModel;
 
 namespace SharpMSDF.Core
@@ -67,29 +68,30 @@ namespace SharpMSDF.Core
                 SwitchColor(ref color, ref seed);
         }
 
-        public static void Simple(Shape shape, double angleThreshold, ulong seed = 0)
+        public static void Simple(ref Shape shape, double angleThreshold, ulong seed = 0)
         {
             double crossThreshold = Math.Sin(angleThreshold);
             EdgeColor color = InitColor(ref seed);
 
             Span<EdgeSegment> parts = stackalloc EdgeSegment[7];
 
-            foreach (var contour in shape.Contours)
+            for (int c = 0; c < shape.Contours.Count; c++)
             {
+                ref Contour contour = ref shape.Contours[c];
                 if (contour.Edges.Count == 0)
                     continue;
 
                 // Identify corners
-                IdentifyCorners(ref seed, crossThreshold, ref color, parts, contour);
+                IdentifyCorners(ref seed, crossThreshold, ref color, parts, ref contour);
             }
         }
 
-        private static void IdentifyCorners(ref ulong seed, double crossThreshold, ref EdgeColor color, Span<EdgeSegment> parts, Contour contour)
+        private static void IdentifyCorners(ref ulong seed, double crossThreshold, ref EdgeColor color, Span<EdgeSegment> parts, ref Contour contour)
         {
             Span<EdgeColor> colors = stackalloc EdgeColor[3];
             Span<int> corners = stackalloc int[contour.Edges.Count];
             int cornersCount = 0;
-            Vector2 prevDirection = contour.Edges[^1].Direction(1);
+            Vector2 prevDirection = contour.Edges[contour.Edges.Count - 1].Direction(1);
 
             for (int i = 0; i < contour.Edges.Count; i++)
             {
@@ -145,11 +147,11 @@ namespace SharpMSDF.Core
                         parts[2].Color = colors[2];
                     }
 
-                    contour.Edges.Clear();
+                    PtrSpan<EdgeSegment>.Clear(ref contour.Edges);
                     for (int p = 0; p < parts.Length; p++)
                     {
                         //if (parts[p] != null)
-                        contour.Edges.Add(parts[p]);
+                        PtrSpan<EdgeSegment>.Push(ref contour.Edges, parts[p]);
                     }
                 }
             }
@@ -182,7 +184,7 @@ namespace SharpMSDF.Core
             public EdgeColor Color;
         }
 
-        public static void InkTrap(Shape shape, double angleThreshold, ulong seed = 0)
+        public static void InkTrap(ref Shape shape, double angleThreshold, ulong seed = 0)
         {
             double crossThreshold = Math.Sin(angleThreshold);
             EdgeColor color = InitColor(ref seed);
@@ -191,20 +193,20 @@ namespace SharpMSDF.Core
 
             for (int ctr = 0; ctr < shape.Contours.Count; ctr++)
             {
-                Contour contour = shape.Contours[ctr];
+                ref Contour contour = ref shape.Contours[ctr];
                 if (contour.Edges.Count == 0)
                     continue;
 
                 double splineLength = 0;
-                InkTrapIdentifyCorners(ref seed, crossThreshold, ref color, colors, contour, ref splineLength);
+                InkTrapIdentifyCorners(ref seed, crossThreshold, ref color, colors, ref contour, ref splineLength);
             }
         }
 
-        private static void InkTrapIdentifyCorners(ref ulong seed, double crossThreshold, ref EdgeColor color,  Span<EdgeColor> colors, Contour contour, ref double splineLength)
+        private static void InkTrapIdentifyCorners(ref ulong seed, double crossThreshold, ref EdgeColor color,  Span<EdgeColor> colors, ref Contour contour, ref double splineLength)
         {
             Span<InkTrapCorner> corners = stackalloc InkTrapCorner[contour.Edges.Count];
             int cornersCount = 0;
-            Vector2 prevDirection = contour.Edges[^1].Direction(1);
+            Vector2 prevDirection = contour.Edges[contour.Edges.Count - 1].Direction(1);
             for (int e = 0; e < contour.Edges.Count; e++)
             {
                 var edge = contour.Edges[e];
@@ -264,11 +266,11 @@ namespace SharpMSDF.Core
                         parts[2].Color = colors[2];
                     }
 
-                    contour.Edges.Clear();
-                    foreach (var part in parts)
+                    PtrSpan<EdgeSegment>.Clear(ref contour.Edges);
+                    for (int p = 0; p < parts.Length; p++)
                     {
-                        //if (part != null)
-                            contour.Edges.Add(part);
+                        //if (parts[p] != null)
+                        PtrSpan<EdgeSegment>.Push(ref contour.Edges, parts[p]);
                     }
                 }
             }

@@ -51,12 +51,16 @@ namespace SharpMSDF.Core
         }
     }
 
-    public class TrueDistanceSelector : IDistanceSelector<double>
+    public struct TrueDistanceSelector : IDistanceSelector<double>
     {
         private Vector2 _p;
         private SignedDistance _minDistance = new SignedDistance();
 
         private const double DISTANCE_DELTA_FACTOR = 1.001;
+
+        public TrueDistanceSelector()
+        {
+        }
 
         public void Reset(Vector2 p)
         {
@@ -94,7 +98,7 @@ namespace SharpMSDF.Core
 
     }
 
-    public class PerpendicularDistanceSelectorBase
+    public struct PerpendicularDistanceSelectorBase
     {
 
         internal SignedDistance _minTrueDistance = new SignedDistance();
@@ -198,18 +202,118 @@ namespace SharpMSDF.Core
 
         public SignedDistance TrueDistance() => _minTrueDistance;
 
-        // --- helper: Vector2.Cross(Vector2,Vector2), Arithmetic.NonZeroSign(double) must be provided elsewhere ---
     }
 
-    public class PerpendicularDistanceSelector : PerpendicularDistanceSelectorBase, IDistanceSelector<double>
+    public struct PerpendicularDistanceSelector : IDistanceSelector<double>
     {
         private Vector2 _p;
         public double DistanceType;  // in C# you can drop this: use double directly
 
+        internal SignedDistance _minTrueDistance = new SignedDistance();
+        internal double _minNegPerp, _minPosPerp;
+        internal EdgeSegment _nearEdge;
+        internal double _nearEdgeParam;
+
+        public const double DISTANCE_DELTA_FACTOR = 1.001;
+
+        public PerpendicularDistanceSelector()
+        {
+            _minNegPerp = -Math.Abs(_minTrueDistance.Distance);
+            _minPosPerp = Math.Abs(_minTrueDistance.Distance);
+            _nearEdge = default;
+            _nearEdgeParam = 0;
+        }
+
+        public static bool GetPerpendicularDistance(ref double distance, Vector2 ep, Vector2 edgeDir)
+        {
+            double ts = Vector2.Dot(ep, edgeDir);
+            if (ts > 0)
+            {
+                double perp = Vector2.Cross(ep, edgeDir);
+                if (Math.Abs(perp) < Math.Abs(distance))
+                {
+                    distance = perp;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void Reset(double delta)
+        {
+            _minTrueDistance.Distance += Arithmetic.NonZeroSign(_minTrueDistance.Distance) * delta;
+            _minNegPerp = -Math.Abs(_minTrueDistance.Distance);
+            _minPosPerp = Math.Abs(_minTrueDistance.Distance);
+            _nearEdge = default;
+            _nearEdgeParam = 0;
+        }
+
+        public bool IsEdgeRelevant(EdgeCache cache, EdgeSegment edge, Vector2 p)
+        {
+            double delta = DISTANCE_DELTA_FACTOR * (p - cache.Point).Length();
+            return
+                cache.AbsDistance - delta <= Math.Abs(_minTrueDistance.Distance)
+                || Math.Abs(cache.ADomainDistance) < delta
+                || Math.Abs(cache.BDomainDistance) < delta
+                || (cache.ADomainDistance > 0 && (
+                        cache.APerpDistance < 0
+                            ? cache.APerpDistance + delta >= _minNegPerp
+                            : cache.APerpDistance - delta <= _minPosPerp
+                   ))
+                || (cache.BDomainDistance > 0 && (
+                        cache.BPerpDistance < 0
+                            ? cache.BPerpDistance + delta >= _minNegPerp
+                            : cache.BPerpDistance - delta <= _minPosPerp
+                   ));
+        }
+
+        internal void AddEdgeTrueDistance(EdgeSegment edge, SignedDistance dist, double param)
+        {
+            if (dist < _minTrueDistance)
+            {
+                _minTrueDistance = dist;
+                _nearEdge = edge;
+                _nearEdgeParam = param;
+            }
+        }
+
+        internal void AddEdgePerpendicularDistance(double d)
+        {
+            if (d <= 0 && d > _minNegPerp) _minNegPerp = d;
+            if (d >= 0 && d < _minPosPerp) _minPosPerp = d;
+        }
+
+        public void Merge(PerpendicularDistanceSelectorBase other)
+        {
+            if (other._minTrueDistance < _minTrueDistance)
+            {
+                _minTrueDistance = other._minTrueDistance;
+                _nearEdge = other._nearEdge;
+                _nearEdgeParam = other._nearEdgeParam;
+            }
+            if (other._minNegPerp > _minNegPerp) _minNegPerp = other._minNegPerp;
+            if (other._minPosPerp < _minPosPerp) _minPosPerp = other._minPosPerp;
+        }
+
+        internal double ComputeDistance(Vector2 p)
+        {
+            double best = _minTrueDistance.Distance < 0 ? _minNegPerp : _minPosPerp;
+            if (_nearEdge.IsAssigned)
+            {
+                var sd = _minTrueDistance;
+                _nearEdge.DistanceToPerpendicularDistance(ref sd, p, _nearEdgeParam);
+                if (Math.Abs(sd.Distance) < Math.Abs(best))
+                    best = sd.Distance;
+            }
+            return best;
+        }
+
+        public SignedDistance TrueDistance() => _minTrueDistance;
+
         public void Reset(Vector2 p)
         {
             double delta = DISTANCE_DELTA_FACTOR * (p - _p).Length();
-            base.Reset(delta);
+            Reset(delta);
             _p = p;
         }
 

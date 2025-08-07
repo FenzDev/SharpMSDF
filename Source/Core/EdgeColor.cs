@@ -4,7 +4,7 @@ namespace SharpMSDF.Core
 {
     /// Edge color specifies which color channels an edge belongs to.
     [Flags]
-    public enum EdgeColor
+    public enum EdgeColor : byte
     {
         Black = 0,
         Red = 1,

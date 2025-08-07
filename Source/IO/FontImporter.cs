@@ -78,34 +78,14 @@ namespace SharpMSDF.IO
             tabAdvance = font.GetAdvanceWidthFromGlyphIndex(glyphIdx) / 64.0;
         }
 
-        /// <summary>
-        /// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
-        /// returning its advance (in the same 1/64 units) and the ideal
-        /// Only TrueType outlines (glyf table) are supported.
-        /// </summary>
-        public static Shape LoadGlyph(
-            Typeface typeface,
-            uint unicode,
-            FontCoordinateScaling scaling)
+        public static ushort EstimateGlyphCapacities(Typeface typeface, uint unicode, out int maxContours, out int maxSegments)
         {
-            return LoadGlyph(typeface, unicode, scaling, out _, out _);
-        }
+            var index = typeface.GetGlyphIndex((int)unicode);
+            var glyph = typeface.GetGlyph(index);
 
-        /// <summary>
-        /// Loads a glyph from a Typography Typeface into a <see cref="Shape"/>,
-        /// returning its advance (in the same 1/64 units) and the ideal
-        /// Only TrueType outlines (glyf table) are supported.
-        /// </summary>
-        public static Shape LoadGlyph(
-            Typeface typeface,
-            uint unicode,
-            FontCoordinateScaling scaling,
-            out float idealWidth,
-            out float idealHeight
-            )
-        {
-            double adv = 0f;
-            return LoadGlyph(typeface, unicode, scaling, out idealWidth, out idealHeight, ref adv);
+            // TODO: Finish
+            maxContours = 0;
+            maxSegments = 0;
         }
 
         /// <summary>
@@ -115,18 +95,16 @@ namespace SharpMSDF.IO
             Typeface typeface,
             uint unicode,
             FontCoordinateScaling scaling,
-            out float idealWidth,
-            out float idealHeight,
+
             ref double advance
             )
         {
+
             //const double scale = 1.0 / 64;
-            ushort glyphIndex = (ushort)typeface.GetGlyphIndex((int)unicode);
+            ushort glyphIndex = typeface.GetGlyphIndex((int)unicode);
 			if (glyphIndex == 0)
 			{
 				advance = 0;
-				idealWidth = idealHeight = 0;
-				return new Shape();
 			}
 			var glyph = typeface.GetGlyph(glyphIndex);
 
@@ -140,15 +118,11 @@ namespace SharpMSDF.IO
             double hUnits = bounds.YMax - bounds.YMin;
 
             // 2) Compute padded bitmap dimensions
-            idealWidth = (float)wUnits / 64f; // + padding * 2;
-            idealHeight = (float)hUnits / 64f; // + padding * 2;
+            //idealWidth = (float)wUnits / 64f; // + padding * 2;
+            //idealHeight = (float)hUnits / 64f; // + padding * 2;
 
             // 3) Compute offset so that glyph’s bottom‐left maps to (padding, padding)
 
-            Shape shape = new Shape();
-            GlyphPointF[] pts = glyph.GlyphPoints;
-            ushort[] ends = glyph.EndPoints;
-            int start = 0;
 
             double scale = GetFontCoordinateScale(typeface, scaling);
             advance = advUnits * scale;
@@ -159,13 +133,16 @@ namespace SharpMSDF.IO
             (double X, double Y) ToShapeSpace(GlyphPointF p)
                 => ((p.X) * scale, (p.Y) * scale);
 
-            foreach (ushort end in ends)
+            Span<GlyphPointF> pts = glyph.GlyphPoints;
+            Span<ushort> ends = glyph.EndPoints;
+            int start = 0;
+            for (int i = 0; i < ends.Length; i++)
             {
-                int count = end - start + 1;
-                if (count <= 0) { start = end + 1; continue; }
-                var contourPts = new List<GlyphPointF>(count);
-                for (int i = start; i <= end; i++)
-                    contourPts.Add(pts[i]);
+                int count = ends[i] - start + 1;
+                if (count <= 0) { start = ends[i] + 1; continue; }
+                var contourPts = GlyphPointF[count];
+                for (int e = start; e <= ends[e]; e++)
+                    contourPts.Add(pts[e]);
 
                 Contour contour = new Contour();
 
@@ -181,9 +158,9 @@ namespace SharpMSDF.IO
                 GlyphPointF? pendingOff = null;
                 int idx0 = firstOff ? 0 : 1;
 
-                for (int i = idx0; i < contourPts.Count; i++)
+                for (int e = idx0; e < contourPts.Count; e++)
                 {
-                    var pt = contourPts[i];
+                    var pt = contourPts[e];
                     if (pt.onCurve)
                     {
                         if (pendingOff.HasValue)
@@ -191,6 +168,7 @@ namespace SharpMSDF.IO
                             var c0 = ToShapeSpace(currentOn);
                             var c1 = ToShapeSpace(pendingOff.Value);
                             var c2 = ToShapeSpace(pt);
+                            
                             contour.Edges.Add(new (
                                 new Vector2((float)c0.X, (float)c0.Y),
                                 new Vector2((float)c1.X, (float)c1.Y),
@@ -288,6 +266,12 @@ namespace SharpMSDF.IO
 
             kerning *= GetFontCoordinateScale(font, scaling);
             return true;
+        }
+
+        private static Span<int> GiveShit(int count)
+        {
+            Span<int> some = stackalloc int[count];
+            return some;
         }
 
     }

@@ -24,7 +24,7 @@ namespace SharpMSDF.Atlas
 		private Shape.Bounds _bounds;
 		private double _advance;
 		private ushort _index;
-		private Shape _shape;
+		private readonly Shape _shape;
 
 		private struct BoxData
 		{
@@ -39,12 +39,13 @@ namespace SharpMSDF.Atlas
 
 		public GlyphGeometry() { }
 
-		public bool Load(Typeface font, double geometryScale, uint codepoint, bool preprocessGeometry = true)
+		public bool Load(Typeface font, , double geometryScale, uint codepoint, bool preprocessGeometry = true)
 		{
 			if (font == null)
 				return false;
 
-			_shape = FontImporter.LoadGlyph(font, codepoint, FontCoordinateScaling.None, out _, out _, ref _advance);
+
+			FontImporter.LoadGlyph(font, codepoint, FontCoordinateScaling.None, out var _shape, ref _advance);
 
 			if (_shape.Validate())
 			{
@@ -316,7 +317,7 @@ namespace SharpMSDF.Atlas
 
 		public bool IsWhitespace() => _shape.Contours.Count == 0;
 
-		public Shape GetShape() => _shape;
+		public readonly Shape GetShape() => _shape;
 
 		public static implicit operator GlyphBox(GlyphGeometry geometry)
 		{

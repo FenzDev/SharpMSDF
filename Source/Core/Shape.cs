@@ -1,4 +1,5 @@
 using SharpMSDF.Core;
+using SharpMSDF.Utilities;
 using System;
 using System.Collections.Generic;
 using Typography.OpenFont.MathGlyphs;
@@ -6,7 +7,7 @@ using Typography.OpenFont.MathGlyphs;
 namespace SharpMSDF.Core
 {
 
-    public struct Shape
+    public unsafe struct Shape
     {
         // Threshold of the dot product of adjacent edge directions to be considered convergent.
         public const double MSDFGEN_CORNER_DOT_EPSILON = .000001;
@@ -20,7 +21,8 @@ namespace SharpMSDF.Core
         /// <summary>
         /// The list of contours the Shape consists of.
         /// </summary>
-        public List<Contour> Contours = [];
+        public PtrSpan<Contour> Contours;
+
         /// <summary>
         /// Specifies whether the Shape uses bottom-to-top (false) or top-to-bottom (true) Y coordinates.
         /// </summary>
@@ -31,7 +33,7 @@ namespace SharpMSDF.Core
         /// </summary>
         public void AddContour(Contour contour)
         {
-            Contours.Add(contour);
+            PtrSpan<Contour>.Push(ref Contours, contour);
         }
 
         /// <summary>
@@ -40,7 +42,7 @@ namespace SharpMSDF.Core
         public Contour AddContour()
         {
             var contour = new Contour();
-            Contours.Add(contour);
+            PtrSpan<Contour>.Push(ref Contours, contour);
             return contour;
         }
 
@@ -54,7 +56,7 @@ namespace SharpMSDF.Core
                 var contour = Contours[i];
                 if (contour.Edges.Count > 0)
                 {
-                    var corner = contour.Edges[^1].Point(1);
+                    var corner = contour.Edges[contour.Edges.Count].Point(1);
                     for (int j = 0; j < contour.Edges.Count; j++)
                     {
                         var edge = contour.Edges[j];
@@ -99,14 +101,14 @@ namespace SharpMSDF.Core
                 if (contour.Edges.Count == 1)
                 {
                     contour.Edges[0].SplitInThirds(out var part0, out var part1, out var part2);
-                    contour.Edges.Clear();
-                    contour.Edges.Add(part0);
-                    contour.Edges.Add(part1);
-                    contour.Edges.Add(part2);
+                    PtrSpan<EdgeSegment>.Clear(ref contour.Edges);
+                    PtrSpan<EdgeSegment>.Push(ref contour.Edges, part0);
+                    PtrSpan<EdgeSegment>.Push(ref contour.Edges, part1);
+                    PtrSpan<EdgeSegment>.Push(ref contour.Edges, part2);
                 }
                 else
                 {
-                    EdgeSegment prevEdge = contour.Edges[^1];
+                    EdgeSegment prevEdge = contour.Edges[contour.Edges.Count];
                     for (int i = 0; i < contour.Edges.Count; i++)
                     {
                         EdgeSegment edge = contour.Edges[i];

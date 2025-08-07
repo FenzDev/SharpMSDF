@@ -1,24 +1,29 @@
 using SharpMSDF.Core;
+using SharpMSDF.Utilities;
 using System;
 using System.Collections.Generic;
 
 namespace SharpMSDF.Core
 {
 
-    public class Contour
+    public unsafe struct Contour
     {
+        public Contour(PtrSpan<EdgeSegment> edges)
+        {
+            Edges = edges;
+        }
 
-        public List<EdgeSegment> Edges = new List<EdgeSegment>();
+        public PtrSpan<EdgeSegment> Edges;
 
         private static double Shoelace(Vector2 a, Vector2 b)
         {
             return (b.X - a.X) * (a.Y + b.Y);
         }
 
-        public void AddEdge(EdgeSegment edge)
-        {
-            Edges.Add(edge);
-        }
+        //public void AddEdge(EdgeSegment edge)
+        //{
+        //    Edges.Add(edge);
+        //}
 
         private static void BoundPoint(ref double l, ref double b, ref double r, ref double t, Vector2 p)
         {
@@ -39,7 +44,7 @@ namespace SharpMSDF.Core
             if (Edges.Count == 0)
                 return;
 
-            Vector2 prevDir = Edges[^1].Direction(1).Normalize(true);
+            Vector2 prevDir = Edges[Edges.Count-1].Direction(1).Normalize(true);
 
             for (int e = 0; e < Edges.Count; e++)
             {
@@ -86,7 +91,7 @@ namespace SharpMSDF.Core
             }
             else
             {
-                Vector2 prev = Edges[^1].Point(0);
+                Vector2 prev = Edges[Edges.Count - 1].Point(0);
                 for (int e = 0; e < Edges.Count; e++)
                 {
                     Vector2 cur = Edges[e].Point(0);

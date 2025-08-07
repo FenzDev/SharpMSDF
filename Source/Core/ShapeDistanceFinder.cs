@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace SharpMSDF.Core
 {
-    public class ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>
+    public ref struct ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>
         where  TDistanceSelector : IDistanceSelector<TDistance>, new()
-        where TCombiner : ContourCombiner<TDistanceSelector,TDistance>, new()
+        where TCombiner : IContourCombiner<TDistanceSelector,TDistance>, new()
     {
         public delegate double DistanceType(); // Will be overridden by TContourCombiner.DistanceType
 
         private readonly Shape Shape;
-        private readonly ContourCombiner<TDistanceSelector, TDistance> ContourCombiner;
+        private readonly IContourCombiner<TDistanceSelector, TDistance> ContourCombiner;
         private readonly EdgeCache[] ShapeEdgeCache; // real type: TContourCombiner.EdgeSelectorType.EdgeCache
 
         public ShapeDistanceFinder(Shape shape)
@@ -44,7 +44,7 @@ namespace SharpMSDF.Core
                             ? contour.Edges[contour.Edges.Count - 2]
                             : contour.Edges[0];
 
-                        EdgeSegment curEdge = contour.Edges[^1];
+                        EdgeSegment curEdge = contour.Edges[contour.Edges.Count - 1];
 
                         for (int i = 0; i < contour.Edges.Count; i++)
                         {
@@ -81,9 +81,9 @@ namespace SharpMSDF.Core
 
                 EdgeSegment curEdge = contour.Edges[contour.Edges.Count - 1];
 
-                foreach (var edgeSegment in contour.Edges)
+                for (int e = 0; e < contour.Edges.Count; e++)
                 {
-                    EdgeSegment nextEdge = edgeSegment;
+                    EdgeSegment nextEdge = contour.Edges[e];
                     var dummyCache = new EdgeCache(); // or default!
                     edgeSelector.AddEdge(&dummyCache, prevEdge, curEdge, nextEdge);
 

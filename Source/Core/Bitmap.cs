@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
@@ -49,13 +50,13 @@ namespace SharpMSDF.Core
 
         public static void Interpolate(Span<float> output, BitmapConstRef<float> bitmap, Vector2 pos)
         {
-            pos -= new Vector2(.5);
+            pos -= new Vector2(.5f);
             int l = (int)Math.Floor(pos.X);
             int b = (int)Math.Floor(pos.Y);
             int r = l + 1;
             int t = b + 1;
-            double lr = pos.X - l;
-            double bt = pos.Y - b;
+            float lr = pos.X - l;
+            float bt = pos.Y - b;
             l = Arithmetic.Clamp(l, bitmap.SubWidth - 1); r = Arithmetic.Clamp(r, bitmap.SubWidth - 1);
             b = Arithmetic.Clamp(b, bitmap.SubHeight - 1); t = Arithmetic.Clamp(t, bitmap.SubHeight - 1);
             for (int i = 0; i < bitmap.N; ++i)

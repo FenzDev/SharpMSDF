@@ -8,13 +8,13 @@ namespace SharpMSDF.Atlas
         int width, height;
         int spacing;
         DimensionsConstraint dimensionsConstraint;
-        double scale, minScale;
+        float scale, minScale;
         DoubleRange unitRange, pxRange;
-        double miterLimit;
+        float miterLimit;
         bool pxAlignOriginX, pxAlignOriginY;
         Padding innerUnitPadding, outerUnitPadding;
         Padding innerPxPadding, outerPxPadding;
-        double scaleMaximizationTolerance;
+        float scaleMaximizationTolerance;
 
         public TightAtlasPacker()
         {
@@ -28,7 +28,7 @@ namespace SharpMSDF.Atlas
             pxRange = new DoubleRange(0);
             miterLimit = 0;
             pxAlignOriginX = pxAlignOriginY = false;
-            scaleMaximizationTolerance = 0.001;
+            scaleMaximizationTolerance = 0.001f;
         }
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace SharpMSDF.Atlas
         /// </summary>
         public unsafe int Pack(GlyphGeometry* glyphs, int count)
         {
-            double initialScale = scale > 0 ? scale : minScale;
+            float initialScale = scale > 0 ? scale : minScale;
             if (initialScale > 0)
             {
                 int result = TryPack(glyphs, count, dimensionsConstraint, ref width, ref height, initialScale);
@@ -103,13 +103,13 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Sets fixed glyph scale
         /// </summary>
-        public void SetScale(double s)
+        public void SetScale(float s)
             => scale = s;
 
         /// <summary>
         /// Sets the minimum glyph scale
         /// </summary>
-        public void SetMinimumScale(double ms)
+        public void SetMinimumScale(float ms)
             => minScale = ms;
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Sets the miter limit for bounds computation
         /// </summary>
-        public void SetMiterLimit(double ml)
+        public void SetMiterLimit(float ml)
             => miterLimit = ml;
 
         /// <summary>
@@ -181,7 +181,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Returns the final glyph scale
         /// </summary>
-        public double GetScale() => scale;
+        public float GetScale() => scale;
 
         /// <summary>
         /// Returns the final combined pixel range (including converted unit range)
@@ -193,7 +193,7 @@ namespace SharpMSDF.Atlas
         // Internals
         //------------------------------------------------------------------------------
 
-        unsafe int TryPack(GlyphGeometry* glyphs, int count, DimensionsConstraint dc, ref int w, ref int h, double s)
+        unsafe int TryPack(GlyphGeometry* glyphs, int count, DimensionsConstraint dc, ref int w, ref int h, float s)
         {
             // Prepare boxes
             var rects = new List<AtlasRectangle>(count);
@@ -266,11 +266,11 @@ namespace SharpMSDF.Atlas
             }
         }
 
-        unsafe double PackAndScale(GlyphGeometry* glyphs, int count)
+        unsafe float PackAndScale(GlyphGeometry* glyphs, int count)
         {
             bool success;
             int w = width, h = height;
-            double lo = 1, hi = 1;
+            float lo = 1, hi = 1;
 
             if (success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, 1) == 0)
             {
@@ -281,7 +281,7 @@ namespace SharpMSDF.Atlas
             else
             {
                 // find lower bound
-                while (lo > 1e-32 && !(success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, lo = .5*hi) == 0))
+                while (lo > 1e-32 && !(success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, lo = .5f*hi) == 0))
                     hi = lo;
             }
 
@@ -291,7 +291,7 @@ namespace SharpMSDF.Atlas
             // binary search
             while (lo / hi < 1 - scaleMaximizationTolerance)
             {
-                double mid = 0.5 * (lo + hi);
+                float mid = 0.5f * (lo + hi);
                 if (success = TryPack(glyphs, count, dimensionsConstraint, ref w, ref h, mid) == 0)
                     lo = mid;
                 else

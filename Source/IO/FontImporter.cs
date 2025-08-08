@@ -4,6 +4,7 @@ using static System.Formats.Asn1.AsnWriter;
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using SharpMSDF.Utilities;
+using System.Numerics;
 
 namespace SharpMSDF.IO
 {
@@ -18,13 +19,13 @@ namespace SharpMSDF.IO
     public struct FontMetrics
     {
         /// The size of one EM.
-        public double EmSize;
+        public float EmSize;
         /// The vertical position of the ascender and descender relative to the baseline.
-        public double AscenderY, DescenderY;
+        public float AscenderY, DescenderY;
         /// The vertical difference between consecutive baselines.
-        public double LineHeight;
+        public float LineHeight;
         /// The vertical position and thickness of the underline.
-        public double UnderlineY/*, UnderlineThickness*/;
+        public float UnderlineY/*, UnderlineThickness*/;
     };
 
     public static class FontImporter
@@ -36,14 +37,14 @@ namespace SharpMSDF.IO
             OpenFontReader reader = new OpenFontReader();
             return reader.Read(file);
         }
-        public static double GetFontCoordinateScale(Typeface face, FontCoordinateScaling coordinateScaling) {
+        public static float GetFontCoordinateScale(Typeface face, FontCoordinateScaling coordinateScaling) {
             switch (coordinateScaling) {
                 case FontCoordinateScaling.None:
                     return 1;
                 case FontCoordinateScaling.EmNormalized:
-                    return 1.0 / (face.UnitsPerEm!=0? face.UnitsPerEm: 1.0);
+                    return 1.0f / (face.UnitsPerEm!=0? face.UnitsPerEm: 1.0f);
                 case FontCoordinateScaling.LegacyNormalized:
-                    return 1.0 / 64.0;
+                    return 1.0f / 64.0f;
             }
             return 1;
         }
@@ -51,7 +52,7 @@ namespace SharpMSDF.IO
 
         public static bool GetFontMetrics(out FontMetrics metrics, Typeface face, FontCoordinateScaling coordinateScaling)
         {
-            double scale = GetFontCoordinateScale(face, coordinateScaling);
+            float scale = GetFontCoordinateScale(face, coordinateScaling);
             metrics.EmSize = scale * face.UnitsPerEm;
             metrics.AscenderY = scale * face.Ascender;
             metrics.DescenderY = scale * face.Descender;
@@ -61,19 +62,6 @@ namespace SharpMSDF.IO
             return true;
         }
 
-        //public static double GetFontScale(Typeface face)
-        //{
-        //    return face.UnitsPerEm / 64.0;
-        //}
-
-        public static void GetFontWhitespaceWidth(ref double spaceAdvance, ref double tabAdvance, Typeface font)
-        {
-            ushort glyphIdx;
-            glyphIdx = font.GetGlyphIndex(' ');
-            spaceAdvance = font.GetAdvanceWidthFromGlyphIndex(glyphIdx) / 64.0;
-            glyphIdx = font.GetGlyphIndex('\t');
-            tabAdvance = font.GetAdvanceWidthFromGlyphIndex(glyphIdx) / 64.0;
-        }
 
         public static ushort PreEstimateGlyph(Typeface typeface, uint unicode, out int maxContours, out int maxSegments)
         {
@@ -83,9 +71,9 @@ namespace SharpMSDF.IO
             maxContours = glyph.EndPoints.Length;
             maxSegments = 0;
 
-            int start = 0;
-            for (int i = 0; i < glyph.EndPoints.Length; i++)
-                maxSegments += (glyph.EndPoints[i] - start) <= 0 ? 0: (glyph.EndPoints[i] - start) == 1? 3: glyph.EndPoints[i] - start; // see Shape.Normalize() it will be spliting segments in three if its lone
+            int start = 0; int count;
+            for (int i = 0; i < glyph.EndPoints.Length; i++, start += count)
+                maxSegments += (count = glyph.EndPoints[i] - start + 1) <= 0 ? 0: count == 1? 3: count; // see Shape.Normalize() it will be spliting segments in three if its 
 
             return index;
         }
@@ -99,7 +87,7 @@ namespace SharpMSDF.IO
             FontCoordinateScaling scaling,
             ref PtrPool<Contour> contoursPool,
             ref PtrPool<EdgeSegment> segmentsPool,
-            ref double advance
+            ref float advance
             )
         {
 			if (glyphIndex == 0)
@@ -114,8 +102,8 @@ namespace SharpMSDF.IO
 
             // 1) Raw glyph bounds in face units
             var bounds = glyph.Bounds;
-            double wUnits = bounds.XMax - bounds.XMin;
-            double hUnits = bounds.YMax - bounds.YMin;
+            //double wUnits = bounds.XMax - bounds.XMin;
+            //double hUnits = bounds.YMax - bounds.YMin;
 
             // 2) Compute padded bitmap dimensions
             //idealWidth = (float)wUnits / 64f; // + padding * 2;
@@ -123,8 +111,8 @@ namespace SharpMSDF.IO
 
             // 3) Compute offset so that glyph’s bottom‐left maps to (padding, padding)
 
-            double scale = GetFontCoordinateScale(typeface, scaling);
-            advance = advUnits * scale;
+            float scale = GetFontCoordinateScale(typeface, scaling);
+            advance += advUnits * scale;
 
             //double offsetX = bounds.XMin /*/ div*/; // + padding
             //double offsetY = -bounds.YMin /*/ div*/; // + padding
@@ -141,7 +129,10 @@ namespace SharpMSDF.IO
             {
                 
                 if (!FillAndAddContour(scale, pts, ends, ref segmentsPool, ref shape, start, i))
+                {
+                    start = ends[i] + 1;
                     continue;
+                }
                 start = ends[i] + 1;
             }
 
@@ -149,21 +140,22 @@ namespace SharpMSDF.IO
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static Vector2 ToShapeSpace(double scale, GlyphPointF p)
+        private static Vector2 ToShapeSpace(float scale, GlyphPointF p)
             => new (p.X * scale, p.Y * scale);
 
-        private static bool FillAndAddContour(double scale, Span<GlyphPointF> pts, Span<ushort> ends, ref PtrPool<EdgeSegment> segmentsPool, ref Shape shape, int start, int i)
+        private static bool FillAndAddContour(float scale, Span<GlyphPointF> pts, Span<ushort> ends, ref PtrPool<EdgeSegment> segmentsPool, ref Shape shape, int start, int i)
         {
             int end = ends[i];
             int count = end - start + 1;
-            if (count <= 0) { start = end + 1; return false; }
-            ReadOnlySpan<GlyphPointF> contourPts = pts[start..end];
+            if (count <= 0) 
+                return false;
+            ReadOnlySpan<GlyphPointF> contourPts = pts.Slice(start, count);
             //for (int e = start; e <= ends[e]; e++)
             //    contourPts[e - start] = pts[e];
 
             Contour contour = new()
             {
-                Edges = segmentsPool.Reserve((end - start) == 1 ? 3 : end - start) // See PreEstimateGlyph()
+                Edges = segmentsPool.Reserve(count == 1 ? 3 : count) // See PreEstimateGlyph()
             };
 
             bool firstOff = !contourPts[0].onCurve;
@@ -266,10 +258,10 @@ namespace SharpMSDF.IO
             return true;
         }
 
-        private static Vector2 ToVec(GlyphPointF pt, double scale) =>
-            new (pt.P.X / scale, pt.P.Y / scale);
+        //private static Vector2 ToVec(GlyphPointF pt, double scale) =>
+        //    new (pt.P.X / scale, pt.P.Y / scale);
 
-        public static bool GetKerning(out double kerning, Typeface font, uint unicode1, uint unicode2, FontCoordinateScaling scaling)
+        public static bool GetKerning(out float kerning, Typeface font, uint unicode1, uint unicode2, FontCoordinateScaling scaling)
         {
             kerning = 0;
             if (font.KernTable == null)

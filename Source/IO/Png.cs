@@ -26,13 +26,13 @@ namespace SharpMSDF.IO
                             pixels[idx++] = Bmp.PixelFloatToByte(bitmap[x, y]);
                             pixels[idx++] = Bmp.PixelFloatToByte(bitmap[x, y]);
                             pixels[idx++] = Bmp.PixelFloatToByte(bitmap[x, y]);
-                            pixels[idx++] = Bmp.PixelFloatToByte(255);
+                            pixels[idx++] = 255;
                             break;
                         case 3:
                             pixels[idx++] = Bmp.PixelFloatToByte(bitmap[x, y, 0]);
                             pixels[idx++] = Bmp.PixelFloatToByte(bitmap[x, y, 1]);
                             pixels[idx++] = Bmp.PixelFloatToByte(bitmap[x, y, 2]);
-                            pixels[idx++] = Bmp.PixelFloatToByte(255);
+                            pixels[idx++] = 255;
                             break;
                         case 4:
                             pixels[idx++] = Bmp.PixelFloatToByte(bitmap[x, y, 0]);

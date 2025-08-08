@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SharpMSDF.Core
 {
-    public class SDFTransformation
+    public struct SDFTransformation
     {
         public Projection Projection;
         public DistanceMapping DistanceMapping;

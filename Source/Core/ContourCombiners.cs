@@ -1,10 +1,12 @@
-﻿namespace SharpMSDF.Core
+﻿using System.Numerics;
+
+namespace SharpMSDF.Core
 {
     internal static class DistanceUtils
     {
         public static void InitDistance<T>(ref T d)
         {
-            if (d is double dDouble)
+            if (d is float dDouble)
                 InitDistance(ref dDouble);
             else if (d is MultiDistance dMulti)
                 InitDistance(ref dMulti);
@@ -14,26 +16,26 @@
                 throw new InvalidCastException("Unexpected size for DistanceUtils.ResolveDistance");
         }
 
-        public static void InitDistance(ref double d) => d = -double.MaxValue;
+        public static void InitDistance(ref float d) => d = -float.MaxValue;
 
         public static void InitDistance(ref MultiDistance d)
         {
-            d.R = -double.MaxValue;
-            d.G = -double.MaxValue;
-            d.B = -double.MaxValue;
+            d.R = -float.MaxValue;
+            d.G = -float.MaxValue;
+            d.B = -float.MaxValue;
         }
 
         public static void InitDistance(ref MultiAndTrueDistance d)
         {
-            d.R = -double.MaxValue;
-            d.G = -double.MaxValue;
-            d.B = -double.MaxValue;
-            d.A = -double.MaxValue;
+            d.R = -float.MaxValue;
+            d.G = -float.MaxValue;
+            d.B = -float.MaxValue;
+            d.A = -float.MaxValue;
         }
 
-        public static double ResolveDistance<T>(T d)
+        public static float ResolveDistance<T>(T d)
         {
-            if (d is double dDouble)
+            if (d is float dDouble)
                 return ResolveDistance(dDouble);
             else if (d is MultiDistance dMulti)
                 return ResolveDistance(dMulti);
@@ -43,20 +45,21 @@
                 throw new InvalidCastException("Unexpected size for DistanceUtils.ResolveDistance");
         }
 
-        public static double ResolveDistance(double d) => d;
+        public static float ResolveDistance(float d) => d;
 
-        public static double ResolveDistance(MultiDistance d) =>
+        public static float ResolveDistance(MultiDistance d) =>
             Arithmetic.Median(d.R, d.G, d.B); // Implement median as needed
 
-        public static double ResolveDistance(MultiAndTrueDistance d) =>
+        public static float ResolveDistance(MultiAndTrueDistance d) =>
             Arithmetic.Median(d.R, d.G, d.B); // or include A as needed
     }
 
     public interface IContourCombiner<TDistanceSelector, TDistance>
     {
-        public virtual void NonCtorInit(ref Shape shape) { }
+        public virtual void NonCtorInit(Shape shape) { }
         public void Reset(Vector2 origin);
-        public TDistanceSelector EdgeSelector(int contourIndex);
+        public TDistanceSelector GetEdgeSelector(int contourIndex);
+        public void SetEdgeSelector(int contourIndex, TDistanceSelector selector);
         public TDistance Distance();
     }
 
@@ -67,17 +70,17 @@
     public struct SimpleContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
     where TDistanceSelector : IDistanceSelector<TDistance>, new()
     {
-        private readonly TDistanceSelector shapeEdgeSelector = new();
+        private TDistanceSelector shapeEdgeSelector = new();
 
         public SimpleContourCombiner() { }
-        public SimpleContourCombiner(Shape shape){ }
 
         public void Reset(Vector2 p)
         {
             shapeEdgeSelector.Reset(p);
         }
 
-        public readonly TDistanceSelector EdgeSelector(int i) => shapeEdgeSelector;
+        public readonly TDistanceSelector GetEdgeSelector(int i) => shapeEdgeSelector;
+        public void SetEdgeSelector(int i, TDistanceSelector selector) { shapeEdgeSelector = selector; }
 
         public TDistance Distance() => shapeEdgeSelector.Distance();
 
@@ -95,10 +98,6 @@
 
         public OverlappingContourCombiner() {}
 
-        public OverlappingContourCombiner(ref Shape shape) 
-        {
-            NonCtorInit(ref shape);
-        }
 
         public void NonCtorInit(ref Shape shape)
         {
@@ -117,8 +116,8 @@
                 selector.Reset(p);
         }
 
-        public TDistanceSelector EdgeSelector(int i) => edgeSelectors[i];
-
+        public readonly TDistanceSelector GetEdgeSelector(int i) => edgeSelectors[i];
+        public void SetEdgeSelector(int i, TDistanceSelector selector) { edgeSelectors[i] = selector; }
 
         public TDistance Distance()
         {
@@ -137,7 +136,7 @@
                 TDistance edgeDistance = edgeSelectors[i].Distance();
                 shapeEdgeSelector.Merge(edgeSelectors[i]);
 
-                double dist = DistanceUtils.ResolveDistance(edgeDistance);
+                float dist = DistanceUtils.ResolveDistance(edgeDistance);
                 if (windings[i] > 0 && dist >= 0)
                     innerEdgeSelector.Merge(edgeSelectors[i]);
                 if (windings[i] < 0 && dist <= 0)
@@ -148,8 +147,8 @@
             TDistance innerDistance = innerEdgeSelector.Distance();
             TDistance outerDistance = outerEdgeSelector.Distance();
 
-            double innerDist = DistanceUtils.ResolveDistance(innerDistance);
-            double outerDist = DistanceUtils.ResolveDistance(outerDistance);
+            float innerDist = DistanceUtils.ResolveDistance(innerDistance);
+            float outerDist = DistanceUtils.ResolveDistance(outerDistance);
 
             TDistance distance = default!;
             DistanceUtils.InitDistance(ref distance);
@@ -165,7 +164,7 @@
                     if (windings[i] > 0)
                     {
                         var contourDist = edgeSelectors[i].Distance();
-                        double contourRes = DistanceUtils.ResolveDistance(contourDist);
+                        float contourRes = DistanceUtils.ResolveDistance(contourDist);
                         if (Math.Abs(contourRes) < Math.Abs(outerDist) && contourRes > DistanceUtils.ResolveDistance(distance))
                             distance = contourDist;
                     }
@@ -180,7 +179,7 @@
                     if (windings[i] < 0)
                     {
                         var contourDist = edgeSelectors[i].Distance();
-                        double contourRes = DistanceUtils.ResolveDistance(contourDist);
+                        float contourRes = DistanceUtils.ResolveDistance(contourDist);
                         if (Math.Abs(contourRes) < Math.Abs(innerDist) && contourRes < DistanceUtils.ResolveDistance(distance))
                             distance = contourDist;
                     }
@@ -196,8 +195,8 @@
                 if (windings[i] != winding)
                 {
                     var contourDist = edgeSelectors[i].Distance();
-                    double res = DistanceUtils.ResolveDistance(contourDist);
-                    double distRes = DistanceUtils.ResolveDistance(distance);
+                    float res = DistanceUtils.ResolveDistance(contourDist);
+                    float distRes = DistanceUtils.ResolveDistance(distance);
                     if (res * distRes >= 0 && Math.Abs(res) < Math.Abs(distRes))
                         distance = contourDist;
                 }

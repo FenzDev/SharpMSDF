@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Numerics;
 using SharpMSDF.Core;
 using FloatRGB = (float R, float G, float B);
 
@@ -7,7 +8,7 @@ namespace SharpMSDF.IO
 {
     public static class Render
     {
-        private static FloatRGB Mix(FloatRGB distA, FloatRGB distB, double weight)
+        private static FloatRGB Mix(FloatRGB distA, FloatRGB distB, float weight)
         {
             return new ()
             {
@@ -20,10 +21,10 @@ namespace SharpMSDF.IO
         private static FloatRGB Sample3(BitmapConstRef<float> bitmap, Vector2 pos)
         {
             int w = bitmap.SubWidth, h = bitmap.SubHeight;
-            var x = pos.X * w - .5;
-            var y = pos.Y * h - .5;
-            var l = (int) Math.Floor(x);
-            var b = (int) Math.Floor(y);
+            var x = pos.X * w - .5f;
+            var y = pos.Y * h - .5f;
+            var l = (int) MathF.Floor(x);
+            var b = (int) MathF.Floor(y);
             var r = l + 1;
             var t = b + 1;
             var lr = x - l;
@@ -44,10 +45,10 @@ namespace SharpMSDF.IO
         private static float Sample1(BitmapConstRef<float> bitmap, Vector2 pos)
         {
             int w = bitmap.SubWidth, h = bitmap.SubHeight;
-            var x = pos.X * w - .5;
-            var y = pos.Y * h - .5;
-            var l = (int)Math.Floor(x);
-            var b = (int)Math.Floor(y);
+            var x = pos.X * w - .5f;
+            var y = pos.Y * h - .5f;
+            var l = (int)MathF.Floor(x);
+            var b = (int)MathF.Floor(y);
             var r = l + 1;
             var t = b + 1;
             var lr = x - l;
@@ -82,7 +83,7 @@ namespace SharpMSDF.IO
                     for (var y = 0; y < h; ++y)
                     for (var x = 0; x < w; ++x)
                     {
-                        var s = Sample1(sdf, new Vector2((x + .5) / w, (y + .5) / h));
+                        var s = Sample1(sdf, new Vector2((x + .5f) / w, (y + .5f) / h));
                         output[x, y] = DistVal(s, pxRange);
                     }
                     break;
@@ -90,7 +91,7 @@ namespace SharpMSDF.IO
                     for (var y = 0; y < h; ++y)
                         for (var x = 0; x < w; ++x)
                         {
-                            var s = Sample3(sdf, new Vector2((x + .5) / w, (y + .5) / h));
+                            var s = Sample3(sdf, new Vector2((x + .5f) / w, (y + .5f) / h));
                             output[x, y] = DistVal(Arithmetic.Median(s.R, s.G, s.B), pxRange);
                         }
 
@@ -99,7 +100,7 @@ namespace SharpMSDF.IO
                     for (var y = 0; y < h; ++y)
                         for (var x = 0; x < w; ++x)
                         {
-                            var s = Sample3(sdf, new Vector2((x + .5) / w, (y + .5) / h));
+                            var s = Sample3(sdf, new Vector2((x + .5f) / w, (y + .5f) / h));
                             output[x, y] = DistVal(Arithmetic.Median(s.R, s.G, s.B), pxRange);
                         }
 

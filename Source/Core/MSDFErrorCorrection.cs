@@ -10,7 +10,7 @@ namespace SharpMSDF.Core
 {
 
     public unsafe ref struct ArtifactClassifier<TCombiner>
-        where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+        where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
     {
         public const byte CLASSIFIER_FLAG_CANDIDATE = 0x01;
         public const byte CLASSIFIER_FLAG_ARTIFACT = 0x02;
@@ -19,18 +19,18 @@ namespace SharpMSDF.Core
 
         public readonly int N;
 
-        public readonly double Span;
+        public readonly float Span;
         public readonly bool ProtectedFlag;
 
 
-        public ArtifactClassifier(double span, bool protectedFlag)
+        public ArtifactClassifier(float span, bool protectedFlag)
         {
             Span = span;
             ProtectedFlag = protectedFlag;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArtifactClassifier(ShapeDistanceChecker<TCombiner> parent, Vector2 direction, double span, int channels) : this(span, parent.ProtectedFlag)
+        public ArtifactClassifier(ShapeDistanceChecker<TCombiner> parent, Vector2 direction, float span, int channels) : this(span, parent.ProtectedFlag)
         {
             Parent = parent; Direction = direction;
             N = channels;
@@ -40,12 +40,12 @@ namespace SharpMSDF.Core
         /// Evaluates if the median value xm interpolated at xt in the range between am at at and bm at bt indicates an artifact.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int RangeTest(double at, double bt, double xt, float am, float bm, float xm)
+        public int RangeTest(float at, float bt, float xt, float am, float bm, float xm)
         {
             // For protected texels, only consider inversion artifacts (interpolated median has different sign than boundaries). For the rest, it is sufficient that the interpolated median is outside its boundaries.
             if ((am > .5f && bm > .5f && xm <= .5f) || (am < .5f && bm < .5f && xm >= .5f) || (!ProtectedFlag && Arithmetic.Median(am, bm, xm) != xm))
             {
-                double axSpan = (xt - at) * Span, bxSpan = (bt - xt) * Span;
+                float axSpan = (xt - at) * Span, bxSpan = (bt - xt) * Span;
                 // Check if the interpolated median's value is in the expected range based on its distance (span) from boundaries a, b.
                 if (!(xm >= am - axSpan && xm <= am + axSpan && xm >= bm - bxSpan && xm <= bm + bxSpan))
                     return CLASSIFIER_FLAG_CANDIDATE | CLASSIFIER_FLAG_ARTIFACT;
@@ -56,7 +56,7 @@ namespace SharpMSDF.Core
 
         /// Returns true if the combined results of the tests performed on the median value m interpolated at t indicate an artifact.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Evaluate(double t, float m, int flags)
+        public bool Evaluate(float t, float m, int flags)
         {
             if ((flags & CLASSIFIER_FLAG_CANDIDATE) != 0)
             {
@@ -72,7 +72,7 @@ namespace SharpMSDF.Core
                 Vector2 sdfCoord = Parent.SdfCoord + tVector;
                 Bitmap<float>.Interpolate(oldMSD, Parent.Sdf, sdfCoord);
                 // Compute the color that would be interpolated at the artifact candidate's position if error correction was applied on the current texel.
-                double aWeight = (1 - Math.Abs(tVector.X)) * (1 - Math.Abs(tVector.Y));
+                float aWeight = (1 - Math.Abs(tVector.X)) * (1 - Math.Abs(tVector.Y));
                 float aPSD = Arithmetic.Median(Parent.Msd[0], Parent.Msd[1], Parent.Msd[2]);
                 newMSD[0] = (float)(oldMSD[0] + aWeight * (aPSD - Parent.Msd[0]));
                 newMSD[1] = (float)(oldMSD[1] + aWeight * (aPSD - Parent.Msd[1]));
@@ -89,26 +89,26 @@ namespace SharpMSDF.Core
     }
 
     public unsafe ref struct ShapeDistanceChecker<TCombiner>
-        where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+        where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
     {
 
         public const byte CLASSIFIER_FLAG_CANDIDATE = 0x01;
         public const byte CLASSIFIER_FLAG_ARTIFACT = 0x02;
         
-        internal double Span;
+        internal float Span;
         internal bool ProtectedFlag;
 
         public Vector2 ShapeCoord, SdfCoord;
         public float* Msd;
 
-        internal ShapeDistanceFinder<TCombiner, PerpendicularDistanceSelector, double> DistanceFinder;
+        internal ShapeDistanceFinder<TCombiner, PerpendicularDistanceSelector, float> DistanceFinder;
         internal readonly BitmapConstRef<float> Sdf;
         internal readonly DistanceMapping DistanceMapping;
         internal readonly Vector2 TexelSize;
-        internal readonly double MinImproveRatio;
+        internal readonly float MinImproveRatio;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ShapeDistanceChecker(BitmapConstRef<float> sdf, Shape shape, Projection projection, DistanceMapping distanceMapping, double minImproveRation)
+        public ShapeDistanceChecker(BitmapConstRef<float> sdf, Shape shape, Projection projection, DistanceMapping distanceMapping, float minImproveRation)
         {
             Sdf = sdf;
             DistanceFinder = new(shape);
@@ -117,7 +117,7 @@ namespace SharpMSDF.Core
 
             TexelSize = projection.UnprojectVector(new(1));
         }
-        public ArtifactClassifier<TCombiner> Classifier(Vector2 direction, double span)
+        public ArtifactClassifier<TCombiner> Classifier(Vector2 direction, float span)
         {
             return new ArtifactClassifier<TCombiner>(this, direction, span, Sdf.N);
         }
@@ -151,8 +151,8 @@ namespace SharpMSDF.Core
 
         private BitmapRef<byte> Stencil;
         private SDFTransformation Transformation;
-        private double MinDeviationRatio;
-        private double MinImproveRatio;
+        private float MinDeviationRatio;
+        private float MinImproveRatio;
 
         public MSDFErrorCorrection()
         {
@@ -171,7 +171,7 @@ namespace SharpMSDF.Core
         /// Sets the minimum ratio between the actual and maximum expected distance delta to be considered an error.
         /// </summary>
         /// <param name="ratio"></param>
-        public void SetMinDeviationRatio(double ratio)
+        public void SetMinDeviationRatio(float ratio)
         {
             MinDeviationRatio = ratio;
         }
@@ -179,7 +179,7 @@ namespace SharpMSDF.Core
         /// Sets the minimum ratio between the pre-correction distance error and the post-correction distance error.
         /// </summary>
         /// <param name="ratio"></param>
-        public void SetMinImproveRatio(double ratio)
+        public void SetMinImproveRatio(float ratio)
         {
             MinImproveRatio = ratio;
         }
@@ -236,7 +236,7 @@ namespace SharpMSDF.Core
         {
             Span<float> c = stackalloc float[3];
             // Find interpolation ratio t (0 < t < 1) where an edge is expected (mix(a[channel], b[channel], t) == 0.5).
-            double t = (a[channel] - .5) / (a[channel] - b[channel]);
+            float t = (a[channel] - .5f) / (a[channel] - b[channel]);
             if (t > 0 && t < 1)
             {
                 // Interpolate channel values at t.
@@ -357,7 +357,7 @@ namespace SharpMSDF.Core
 
                     Vector2 p0 = edge.Point(0);
                     Vector2 p1 = edge.Point(1);
-                    Vector2 pMid = edge.Point(0.5);
+                    Vector2 pMid = edge.Point(0.5f);
 
                     points[0] = Transformation.Projection.ProjectVector(p0);
                     points[1] = Transformation.Projection.ProjectVector(pMid);
@@ -392,7 +392,7 @@ namespace SharpMSDF.Core
             }
         }
 
-        static float InterpolatedMedian(ReadOnlySpan<float> a, ReadOnlySpan<float> b, double t)
+        static float InterpolatedMedian(ReadOnlySpan<float> a, ReadOnlySpan<float> b, float t)
         {
             return Arithmetic.Median(
                 Arithmetic.Mix(a[0], b[0], t),
@@ -401,7 +401,7 @@ namespace SharpMSDF.Core
             );
         }
 
-        static float InterpolatedMedian(ReadOnlySpan<float> a, ReadOnlySpan<float> l, ReadOnlySpan<float> q, double t)
+        static float InterpolatedMedian(ReadOnlySpan<float> a, ReadOnlySpan<float> l, ReadOnlySpan<float> q, float t)
         {
             return (float)Arithmetic.Median(
                 t * (t * q[0] + l[0]) + a[0],
@@ -410,7 +410,7 @@ namespace SharpMSDF.Core
             );
         }
         /// Determines if the interpolated median xm is an artifact.
-        static bool IsArtifact(bool isProtected, double axSpan, double bxSpan, float am, float bm, float xm)
+        static bool IsArtifact(bool isProtected, float axSpan, float bxSpan, float am, float bm, float xm)
         {
             return (
                 // For protected texels, only report an artifact if it would cause fill inversion (change between positive and negative distance).
@@ -422,10 +422,10 @@ namespace SharpMSDF.Core
 
         /// Checks if a linear interpolation artifact will occur at a point where two specific color channels are equal - such points have extreme median values.
         static bool HasLinearArtifactInner<TCombiner>(ArtifactClassifier<TCombiner> artifactClassifier, float am, float bm, ReadOnlySpan<float> a, ReadOnlySpan<float> b, float dA, float dB)
-            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             // Find interpolation ratio t (0 < t < 1) where two color channels are equal (mix(dA, dB, t) == 0).
-            double t = (double)dA / (dA - dB);
+            float t = (float)dA / (dA - dB);
             if (t > ARTIFACT_T_EPSILON && t < 1 - ARTIFACT_T_EPSILON)
             {
                 // Interpolate median at t and let the classifier decide if its value indicates an artifact.
@@ -436,7 +436,7 @@ namespace SharpMSDF.Core
         }
 
         static bool HasLinearArtifact<TCombiner>(ArtifactClassifier<TCombiner> artifactClassifier, float am, ReadOnlySpan<float> a, ReadOnlySpan<float> b)
-            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             float bm = Arithmetic.Median(b[0], b[1], b[2]);
             return (
@@ -451,13 +451,13 @@ namespace SharpMSDF.Core
         }
 
         /// Checks if a bilinear interpolation artifact will occur at a point where two specific color channels are equal - such points have extreme median values.
-        static bool HasDiagonalArtifactInner<TCombiner>(ArtifactClassifier<TCombiner> artifactClassifier, float am, float dm, ReadOnlySpan<float> a, ReadOnlySpan<float> l, Span<float> q, float dA, float dBC, float dD, double tEx0, double tEx1)
-            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+        static bool HasDiagonalArtifactInner<TCombiner>(ArtifactClassifier<TCombiner> artifactClassifier, float am, float dm, ReadOnlySpan<float> a, ReadOnlySpan<float> l, Span<float> q, float dA, float dBC, float dD, float tEx0, float tEx1)
+            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             // Find interpolation ratios t (0 < t[i] < 1) where two color channels are equal.
-            Span<double> t = stackalloc double[2];
+            Span<float> t = stackalloc float[2];
 
-            Span<double> tEnd = stackalloc double[2];
+            Span<float> tEnd = stackalloc float[2];
             Span<float> em = stackalloc float[2];
 
             int solutions = EquationSolver.SolveQuadratic(t, dD - dBC + dA, dBC - dA - dA, dA);
@@ -499,7 +499,7 @@ namespace SharpMSDF.Core
 
         /// Checks if a bilinear interpolation artifact will occur inbetween two diagonally adjacent texels a, d (with b, c forming the other diagonal).
         static bool HasDiagonalArtifact<TCombiner>(ArtifactClassifier<TCombiner> artifactClassifier, float am, ReadOnlySpan<float> a, ReadOnlySpan<float> b, ReadOnlySpan<float> c, ReadOnlySpan<float> d)
-            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             float dm = Arithmetic.Median(d[0], d[1], d[2]);
             // Out of the pair, only report artifacts for the texel further from the edge to minimize side effects.
@@ -523,10 +523,10 @@ namespace SharpMSDF.Core
                     d[2]+abc[2]
                 ];
                 // Compute interpolation ratios tEx (0 < tEx[i] < 1) for the local extremes of each color channel (the derivative 2*q[i]*tEx[i]+l[i] == 0).
-                Span<double> tEx = [
-                    -.5*l[0]/q[0],
-                    -.5*l[1]/q[1],
-                    -.5*l[2]/q[2]
+                Span<float> tEx = [
+                    -.5f*l[0]/q[0],
+                    -.5f*l[1]/q[1],
+                    -.5f*l[2]/q[2]
                 ];
                 // Check points where each pair of color channels meets.
                 return (
@@ -538,14 +538,14 @@ namespace SharpMSDF.Core
             return false;
         }
         public unsafe void FindErrors<TCombiner>(BitmapConstRef<float> sdf)
-                where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+                where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             ReadOnlySpan<float> dummy = stackalloc float[4];
 
             // Compute the expected deltas between values of horizontally, vertically, and diagonally adjacent texels.
-            double hSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)], 0)).Length();
-            double vSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(0, Transformation.DistanceMapping[new(1)])).Length();
-            double dSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)])).Length();
+            float hSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)], 0)).Length();
+            float vSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(0, Transformation.DistanceMapping[new(1)])).Length();
+            float dSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)])).Length();
 
             fixed (float* pixels = sdf._Pixels)
             {
@@ -638,14 +638,14 @@ namespace SharpMSDF.Core
 
 
         public unsafe void FindErrors<TCombiner>(BitmapConstRef<float> sdf, Shape shape)
-            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             ReadOnlySpan<float> dummy = stackalloc float[4];
 
             // Compute the expected deltas between values of horizontally, vertically, and diagonally adjacent texels.
-            double hSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)], 0)).Length();
-            double vSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(0, Transformation.DistanceMapping[new(1)])).Length();
-            double dSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)])).Length();
+            float hSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)], 0)).Length();
+            float vSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(0, Transformation.DistanceMapping[new(1)])).Length();
+            float dSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)])).Length();
             {
                 var shapeDistanceChecker = new ShapeDistanceChecker<TCombiner>(sdf, shape, Transformation.Projection, Transformation.DistanceMapping, MinImproveRatio);
                 bool rightToLeft = false;
@@ -660,8 +660,8 @@ namespace SharpMSDF.Core
                         if ((Stencil[x, row] & (byte)Flags.Error) != 0)
                             continue;
                         ReadOnlySpan<float> c = sdf.Slice(x, row);
-                        shapeDistanceChecker.ShapeCoord = Transformation.Projection.Unproject(new(x + .5, y + .5));
-                        shapeDistanceChecker.SdfCoord = new Vector2(x + .5, row + .5);
+                        shapeDistanceChecker.ShapeCoord = Transformation.Projection.Unproject(new(x + .5f, y + .5f));
+                        shapeDistanceChecker.SdfCoord = new Vector2(x + .5f, row + .5f);
                         fixed (float* msd = c)
                         {
                             shapeDistanceChecker.ProtectedFlag = (Stencil[x, row] & (byte)Flags.Protected) != 0;
@@ -776,7 +776,7 @@ namespace SharpMSDF.Core
         public BitmapConstRef<byte> GetStencil() => Stencil;
 
         static void CorrectionInner<TCombiner>(BitmapRef<float> sdf, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config)
-            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             if (config.ErrorCorrection.Mode == ErrorCorrectionConfig.OpMode.DISABLED)
                 return;
@@ -817,16 +817,16 @@ namespace SharpMSDF.Core
             if (config.ErrorCorrection.DistanceCheckMode == ErrorCorrectionConfig.ConfigDistanceCheckMode.ALWAYS_CHECK_DISTANCE || config.ErrorCorrection.DistanceCheckMode == ErrorCorrectionConfig.ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE)
             {
                 if (config.OverlapSupport)
-                    ec.FindErrors<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(sdf, shape);
+                    ec.FindErrors<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape);
                 else
-                    ec.FindErrors<SimpleContourCombiner<PerpendicularDistanceSelector, double>>(sdf, shape);
+                    ec.FindErrors<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape);
             }
             ec.Apply(sdf);
         }
 
 
         public static void ErrorCorrection<TCombiner>(BitmapRef<float> sdf, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config)
-            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, double>, new()
+            where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             CorrectionInner<TCombiner>(sdf, shape, transformation, config);
         }

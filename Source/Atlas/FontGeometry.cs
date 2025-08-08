@@ -44,14 +44,14 @@ namespace SharpMSDF.Atlas
             }
         }
 
-        private double geometryScale = 1.0;
+        private float geometryScale = 1.0f;
         private FontMetrics metrics;
         private GlyphIdentifierType preferredIdentifierType = GlyphIdentifierType.UnicodeCodepoint;
         private List<GlyphGeometry> glyphs;
         private ushort rangeStart, rangeEnd;
         private readonly Dictionary<ushort, ushort> glyphsByIndex = new();
         private readonly Dictionary<uint, ushort> glyphsByCodepoint = new();
-        private readonly Dictionary<(ushort, ushort), double> kerning = new();
+        private readonly Dictionary<(ushort, ushort), float> kerning = new();
         private readonly List<GlyphGeometry> ownGlyphs = new();
         private string? name;
 
@@ -70,7 +70,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Loads the consecutive range of glyphs between rangeStart (inclusive) and rangeEnd (exclusive), returns the number of successfully loaded glyphs
         /// </summary>
-        public int LoadGlyphRange(Typeface font, double fontScale, ushort rangeStart, uint rangeEnd, bool preprocessGeometry = true, bool enableKerning = true)
+        public int LoadGlyphRange(Typeface font, float fontScale, ushort rangeStart, uint rangeEnd, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == this.rangeEnd && LoadMetrics(font, fontScale)))
                 return -1;
@@ -97,7 +97,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Loads all glyphs in a glyphset (Charset elements are glyph indices), returns the number of successfully loaded glyphs
         /// </summary>
-        public int LoadGlyphset(Typeface face, double fontScale, Charset glyphset, bool preprocessGeometry = true, bool enableKerning = true)
+        public int LoadGlyphset(Typeface face, float fontScale, Charset glyphset, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == rangeEnd && LoadMetrics(face, fontScale)))
                 return -1;
@@ -124,7 +124,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Loads all glyphs in a charset (Charset elements are Unicode codepoints), returns the number of successfully loaded glyphs
         /// </summary>
-        public int LoadCharset(Typeface face, double fontScale, Charset charset, bool preprocessGeometry = true, bool enableKerning = true)
+        public int LoadCharset(Typeface face, float fontScale, Charset charset, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == rangeEnd && LoadMetrics(face, fontScale)))
                 return -1;
@@ -151,13 +151,13 @@ namespace SharpMSDF.Atlas
         ///<summary>
         /// Only loads font metrics and geometry scale from font
         ///</summary>
-        public bool LoadMetrics(Typeface font, double fontScale)
+        public bool LoadMetrics(Typeface font, float fontScale)
         {
             if (!FontImporter.GetFontMetrics(out this.metrics, font, FontCoordinateScaling.None))
                 return false;
 
             if (metrics.EmSize <= 0)
-                metrics.EmSize = 2048.0;
+                metrics.EmSize = 2048.0f;
 
             geometryScale = fontScale / metrics.EmSize;
 
@@ -202,7 +202,7 @@ namespace SharpMSDF.Atlas
                     var glyph1 = glyphs[i];
                     var glyph2 = glyphs[j];
 
-                    if (FontImporter.GetKerning(out double advance, font, glyph1.GetCodepoint(), glyph2.GetCodepoint(), FontCoordinateScaling.None) && advance != 0.0)
+                    if (FontImporter.GetKerning(out float advance, font, glyph1.GetCodepoint(), glyph2.GetCodepoint(), FontCoordinateScaling.None) && advance != 0.0f)
                     {
                         kerning[(glyph1.GetIndex(), glyph2.GetIndex())] = advance * geometryScale;
                         ++loaded;
@@ -221,7 +221,7 @@ namespace SharpMSDF.Atlas
             this.name = name;
         }
 
-        public double GeometryScale => geometryScale;
+        public float GeometryScale => geometryScale;
         public FontMetrics Metrics => metrics;
         public GlyphIdentifierType PreferredIdentifierType => preferredIdentifierType;
         /// <summary>
@@ -248,7 +248,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Outputs the advance between two glyphs with kerning taken into consideration, returns false on failure
         /// </summary>
-        public bool GetAdvance(out double advance, ushort index1, ushort index2)
+        public bool GetAdvance(out float advance, ushort index1, ushort index2)
         {
             advance = 0;
             var glyph1 = GetGlyph(index1);
@@ -256,7 +256,7 @@ namespace SharpMSDF.Atlas
                 return false;
 
             advance = glyph1.Value.GetAdvance();
-            if (kerning.TryGetValue((index1, index2), out double kern))
+            if (kerning.TryGetValue((index1, index2), out float kern))
                 advance += kern;
 
             return true;
@@ -265,7 +265,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Outputs the advance between two glyphs with kerning taken into consideration, returns false on failure
         /// </summary>
-        public bool GetAdvance(out double advance, uint codepoint1, uint codepoint2)
+        public bool GetAdvance(out float advance, uint codepoint1, uint codepoint2)
         {
             advance = 0;
             var glyph1 = GetGlyph(codepoint1);
@@ -274,13 +274,13 @@ namespace SharpMSDF.Atlas
                 return false;
 
             advance = glyph1.Value.GetAdvance();
-            if (kerning.TryGetValue((glyph1.Value.GetIndex(), glyph2.Value.GetIndex()), out double kern))
+            if (kerning.TryGetValue((glyph1.Value.GetIndex(), glyph2.Value.GetIndex()), out float kern))
                 advance += kern;
 
             return true;
         }
 
-        public IReadOnlyDictionary<(ushort, ushort), double> Kerning => kerning;
+        public IReadOnlyDictionary<(ushort, ushort), float> Kerning => kerning;
         public string? Name => string.IsNullOrEmpty(name) ? null : name;
     }
 }

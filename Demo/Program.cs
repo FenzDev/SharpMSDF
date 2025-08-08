@@ -14,9 +14,11 @@ using System.Drawing;
 using System.Buffers;
 using static System.Net.Mime.MediaTypeNames;
 using SharpMSDF.Utilities;
+using System.Threading;
 
 namespace SharpMSDF.Demo
 {
+
     internal static class Program
     {
         static void Main(string[] args)
@@ -31,8 +33,8 @@ namespace SharpMSDF.Demo
         {
             // Set some generation parameters 
             int scale = 64;
-            double pxrange = 6.0;
-            double angleThereshold = 3.0;
+            float pxrange = 6.0f;
+            float angleThereshold = 3.0f;
 
             // Load the glyph
             var glyphIndex = FontImporter.PreEstimateGlyph(font, unicode, out int maxContours, out int maxSegments);
@@ -42,14 +44,14 @@ namespace SharpMSDF.Demo
             EdgeSegment* segmentsPtr = stackalloc EdgeSegment[maxSegments];
             PtrPool<EdgeSegment> segmentsPool = new(segmentsPtr, maxSegments);
 
-            double advance = 0.0;
+            float advance = 0.0f;
             var shape = FontImporter.LoadGlyph(font, glyphIndex, FontCoordinateScaling.EmNormalized, ref contoursPool, ref segmentsPool, ref advance);
             var msdf_ = ArrayPool<float>.Shared.Rent(scale * scale * 3);
             var msdf = new Bitmap<float>(msdf_, scale, scale, 3);
 
             shape.OrientContours(); // This will fix orientation of the windings
             shape.Normalize(); // Normalize the Shape geometry for distance field generation.
-            EdgeColorings.InkTrap(ref shape, angleThereshold); // Assign colors to the edges of the shape, we use InkTrap technique here.
+            EdgeColorings.Simple(ref shape, angleThereshold); // Assign colors to the edges of the shape, we use InkTrap technique here.
 
             // range = pxrange / scale
             var distMap = new DistanceMapping(new(pxrange / scale));
@@ -63,14 +65,16 @@ namespace SharpMSDF.Demo
             );
 
             // Save msdf output
-            Png.SavePng(msdf, "output.png");
+            Bmp.SaveBmp(msdf, "output.bmp");
 
             // Save a rendering preview
-            var rast = new Bitmap<float>(1024, 1024);
+            var rast_ = ArrayPool<float>.Shared.Rent(1024 * 1024);
+            var rast = new Bitmap<float>(rast_, 1024, 1024);
             Render.RenderSdf(rast, msdf, pxrange);
             Png.SavePng(rast, "render.png");
 
-            ArrayPool<float>.Shared.Return(msdf.Pixels);
+            ArrayPool<float>.Shared.Return(rast_);
+            ArrayPool<float>.Shared.Return(msdf_);
         }
 
         //    private static void ImediateAtlasGen(Typeface font)

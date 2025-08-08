@@ -5,13 +5,13 @@ namespace SharpMSDF.Atlas
 {
     public struct Padding
     {
-        public double L, B, R, T;
+        public float L, B, R, T;
 
-        public Padding(double uniformPadding)
+        public Padding(float uniformPadding)
         {
             L = B = R = T = uniformPadding;
         }
-        public Padding(double l, double b, double r, double t)
+        public Padding(float l, float b, float r, float t)
         {
             L = l;
             B = b;
@@ -34,17 +34,17 @@ namespace SharpMSDF.Atlas
             return new Padding(a.L - b.L, a.B - b.B, a.R - b.R, a.T - b.T);
         }
 
-        public static Padding operator *(double factor, Padding padding)
+        public static Padding operator *(float factor, Padding padding)
         {
             return new Padding(factor * padding.L, factor * padding.B, factor * padding.R, factor * padding.T);
         }
 
-        public static Padding operator *(Padding padding, double factor)
+        public static Padding operator *(Padding padding, float factor)
         {
             return new Padding(padding.L * factor, padding.B * factor, padding.R * factor, padding.T * factor);
         }
 
-        public static Padding operator /(Padding padding, double divisor)
+        public static Padding operator /(Padding padding, float divisor)
         {
             return new Padding(padding.L / divisor, padding.B / divisor, padding.R / divisor, padding.T / divisor);
         }

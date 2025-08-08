@@ -15,9 +15,9 @@
 		);
 
 		/// <summary>The default value of MinDeviationRatio.</summary>
-		public const double DefaultMinDeviationRatio = 1.1111111111111112;
+		public const float DefaultMinDeviationRatio = 1.1111111111111112f;
 		/// <summary>The default value of MinImproveRatio.</summary>
-		public const double DefaultMinImproveRatio = 1.1111111111111112;
+		public const float DefaultMinImproveRatio = 1.1111111111111112f;
 
 		/// <summary>Mode of operation.</summary>
 		public enum OpMode
@@ -47,8 +47,8 @@
 
 		public OpMode Mode = OpMode.EDGE_PRIORITY;
 		public ConfigDistanceCheckMode DistanceCheckMode = ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE;
-		public double MinDeviationRatio = DefaultMinDeviationRatio;
-		public double MinImproveRatio = DefaultMinImproveRatio;
+		public float MinDeviationRatio = DefaultMinDeviationRatio;
+		public float MinImproveRatio = DefaultMinImproveRatio;
 
 		/// <summary>
 		/// An optional Buffer to avoid dynamic allocation. Must have at least as many bytes as the MSDF has pixels.
@@ -58,8 +58,8 @@
 		public ErrorCorrectionConfig(
 			OpMode mode = OpMode.EDGE_PRIORITY,
 			ConfigDistanceCheckMode distanceCheckMode = ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE,
-			double minDeviationRatio = DefaultMinDeviationRatio,
-			double minImproveRatio = DefaultMinImproveRatio,
+			float minDeviationRatio = DefaultMinDeviationRatio,
+			float minImproveRatio = DefaultMinImproveRatio,
 			byte[] buffer = null)
 		{
 			Mode = mode;

@@ -38,20 +38,20 @@
 //        public abstract EdgeSegment Clone();
 //        public abstract int Type();
 //        public abstract Vector2[] ControlPoints();
-//        public abstract Vector2 Point(double param);
-//        public abstract Vector2 Direction(double param);
-//        public abstract Vector2 DirectionChange(double param);
-//        public abstract SignedDistance SignedDistance(Vector2 origin, out double param);
-//        public void DistanceToPerpendicularDistance(ref SignedDistance distance, Vector2 origin, double param)
+//        public abstract Vector2 Point(float param);
+//        public abstract Vector2 Direction(float param);
+//        public abstract Vector2 DirectionChange(float param);
+//        public abstract SignedDistance SignedDistance(Vector2 origin, out float param);
+//        public void DistanceToPerpendicularDistance(ref SignedDistance distance, Vector2 origin, float param)
 //        {
 //            if (param < 0)
 //            {
 //                Vector2 dir = Direction(0).Normalize();
 //                Vector2 aq = origin - Point(0);
-//                double ts = Vector2.Dot(aq, dir);
+//                float ts = Vector2.Dot(aq, dir);
 //                if (ts < 0)
 //                {
-//                    double perp = Vector2.Cross(aq, dir);
+//                    float perp = Vector2.Cross(aq, dir);
 //                    if (Math.Abs(perp) <= Math.Abs(distance.Distance))
 //                    {
 //                        distance.Distance = perp;
@@ -63,10 +63,10 @@
 //            {
 //                Vector2 dir = Direction(1).Normalize();
 //                Vector2 bq = origin - Point(1);
-//                double ts = Vector2.Dot(bq, dir);
+//                float ts = Vector2.Dot(bq, dir);
 //                if (ts > 0)
 //                {
-//                    double perp = Vector2.Cross(bq, dir);
+//                    float perp = Vector2.Cross(bq, dir);
 //                    if (Math.Abs(perp) <= Math.Abs(distance.Distance))
 //                    {
 //                        distance.Distance = perp;
@@ -75,14 +75,14 @@
 //                }
 //            }
 //        }
-//        public abstract int ScanlineIntersections(Span<double> x, Span<int> dy, double y);
-//        public abstract void Bound(ref double l, ref double b, ref double r, ref double t);
+//        public abstract int ScanlineIntersections(Span<float> x, Span<int> dy, float y);
+//        public abstract void Bound(ref float l, ref float b, ref float r, ref float t);
 //        public abstract void Reverse();
 //        public abstract void MoveStartPoint(Vector2 to);
 //        public abstract void MoveEndPoint(Vector2 to);
 //        public abstract void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2);
 
-//        protected static void PointBounds(Vector2 p, ref double l, ref double b, ref double r, ref double t)
+//        protected static void PointBounds(Vector2 p, ref float l, ref float b, ref float r, ref float t)
 //        {
 //            if (p.X < l) l = p.X;
 //            if (p.Y < b) b = p.Y;
@@ -103,34 +103,34 @@
 //        public override EdgeSegment Clone() => new LinearSegment(P[0], P[1], Color);
 //        public override int Type() => EDGE_TYPE;
 //        public override Vector2[] ControlPoints() => P;
-//        public override Vector2 Point(double t) => Arithmetic.Mix(P[0], P[1], t);
-//        public override Vector2 Direction(double t) => P[1] - P[0];
-//        public override Vector2 DirectionChange(double t) => new Vector2 { X = 0, Y = 0 };
-//        public double Length() => (P[1] - P[0]).Length();
+//        public override Vector2 Point(float t) => Arithmetic.Mix(P[0], P[1], t);
+//        public override Vector2 Direction(float t) => P[1] - P[0];
+//        public override Vector2 DirectionChange(float t) => new Vector2 { X = 0, Y = 0 };
+//        public float Length() => (P[1] - P[0]).Length();
 
-//        public override SignedDistance SignedDistance(Vector2 origin, out double param)
+//        public override SignedDistance SignedDistance(Vector2 origin, out float param)
 //        {
 //            Vector2 aq = origin - P[0];
 //            Vector2 ab = P[1] - P[0];
 //            param = Vector2.Dot(aq, ab) / Vector2.Dot(ab, ab);
 //            Vector2 eq = (param > .5) ? P[1]-origin : P[0]-origin;
-//            double endpointDist = eq.Length();
+//            float endpointDist = eq.Length();
 //            if (param > 0 && param < 1)
 //            {
-//                double ortho = Vector2.Dot(ab.GetOrthonormal(false), aq);
+//                float ortho = Vector2.Dot(ab.GetOrthonormal(false), aq);
 //                if (Math.Abs(ortho) < endpointDist)
 //                    return new SignedDistance(ortho, 0);
 //            }
-//            double sign = Arithmetic.NonZeroSign(Vector2.Cross(aq, ab));
+//            float sign = Arithmetic.NonZeroSign(Vector2.Cross(aq, ab));
 //            return new SignedDistance(sign * endpointDist,
 //                Math.Abs(Vector2.Dot(ab.Normalize(), eq.Normalize())));
 //        }
 
-//        public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+//        public override int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 //        {
 //            if ((y >= P[0].Y && y < P[1].Y) || (y >= P[1].Y && y < P[0].Y))
 //            {
-//                double param = (y - P[0].Y) / (P[1].Y - P[0].Y);
+//                float param = (y - P[0].Y) / (P[1].Y - P[0].Y);
 //                x[0] = Arithmetic.Mix(P[0].X, P[1].X, param);
 //                dy[0] = Arithmetic.Sign(P[1].Y - P[0].Y);
 //                return 1;
@@ -138,7 +138,7 @@
 //            return 0;
 //        }
 
-//        public override void Bound(ref double l, ref double b, ref double r, ref double t)
+//        public override void Bound(ref float l, ref float b, ref float r, ref float t)
 //        {
 //            if (P[0].X < l) l = P[0].X;
 //            if (P[0].Y < b) b = P[0].Y;
@@ -161,9 +161,9 @@
 
 //        public override void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2)
 //        {
-//            part0 = new LinearSegment(P[0], Point(1.0 / 3.0), Color);
-//            part1 = new LinearSegment(Point(1.0 / 3.0), Point(2.0 / 3.0), Color);
-//            part2 = new LinearSegment(Point(2.0 / 3.0), P[1], Color);
+//            part0 = new LinearSegment(P[0], Point(1.0f / 3.0f), Color);
+//            part1 = new LinearSegment(Point(1.0f / 3.0f), Point(2.0f / 3.0f), Color);
+//            part2 = new LinearSegment(Point(2.0f / 3.0f), P[1], Color);
 //        }
 //    }
 
@@ -179,34 +179,34 @@
 //        public override EdgeSegment Clone() => new QuadraticSegment(P[0], P[1], P[2], Color);
 //        public override int Type() => EDGE_TYPE;
 //        public override Vector2[] ControlPoints() => P;
-//        public override Vector2 Point(double t)
+//        public override Vector2 Point(float t)
 //            => Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], t), Arithmetic.Mix(P[1], P[2], t), t);
-//        public override Vector2 Direction(double t)
+//        public override Vector2 Direction(float t)
 //        {
 //            Vector2 tangent = Arithmetic.Mix(P[1] - P[0], P[2] - P[1], t);
 //            return tangent.Length() == 0 ? P[2] - P[0] : tangent;
 //        }
-//        public override Vector2 DirectionChange(double t)
+//        public override Vector2 DirectionChange(float t)
 //            => new Vector2
 //            {
 //                X = (P[2] - P[1]).X - (P[1] - P[0]).X,
 //                Y = (P[2] - P[1]).Y - (P[1] - P[0]).Y
 //            };
 
-//        public double Length()
+//        public float Length()
 //        {
 //            Vector2 ab = P[1] - P[0];
 //            Vector2 br = (P[2] - P[1]) - ab;
-//            double abab = Vector2.Dot(ab, ab), abbr = Vector2.Dot(ab, br), brbr = Vector2.Dot(br, br);
-//            double abLen = Math.Sqrt(abab), brLen = Math.Sqrt(brbr);
-//            double crs = Vector2.Cross(ab, br);
-//            double h = Math.Sqrt(abab + 2 * abbr + brbr);
+//            float abab = Vector2.Dot(ab, ab), abbr = Vector2.Dot(ab, br), brbr = Vector2.Dot(br, br);
+//            float abLen = Math.Sqrt(abab), brLen = Math.Sqrt(brbr);
+//            float crs = Vector2.Cross(ab, br);
+//            float h = Math.Sqrt(abab + 2 * abbr + brbr);
 //            return (
 //                brLen * ((abbr + brbr) * h - abbr * abLen) +
 //                crs * crs * Math.Log((brLen * h + abbr + brbr) / (brLen * abLen + abbr))
 //            ) / (brbr * brLen);
 //        }
-//        public override SignedDistance SignedDistance(Vector2 origin, out double param)
+//        public override SignedDistance SignedDistance(Vector2 origin, out float param)
 //        {
 //            // compute helper vectors
 //            Vector2 qa = P[0] - origin;
@@ -214,23 +214,23 @@
 //            Vector2 br = (P[2] - P[1]) - ab;
 
 //            // cubic coefficients for |Q(param)|² derivative = 0
-//            double a = Vector2.Dot(br, br);
-//            double b = 3 * Vector2.Dot(ab, br);
-//            double c = 2 * Vector2.Dot(ab, ab) + Vector2.Dot(qa, br);
-//            double d = Vector2.Dot(qa, ab);
+//            float a = Vector2.Dot(br, br);
+//            float b = 3 * Vector2.Dot(ab, br);
+//            float c = 2 * Vector2.Dot(ab, ab) + Vector2.Dot(qa, br);
+//            float d = Vector2.Dot(qa, ab);
 
 //            // solve for param in [0,1]
-//            Span<double> t = stackalloc double[3];
+//            Span<float> t = stackalloc float[3];
 //            int solutions = EquationSolver.SolveCubic(t, a, b, c, d);
 
 //            // start by assuming the closest is at param=0 (Point A)
 //            Vector2 epDir = Direction(0);
-//            double minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, qa)) * qa.Length();
+//            float minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, qa)) * qa.Length();
 //            param = -Vector2.Dot(qa, epDir) / Vector2.Dot(epDir, epDir);
 
 //            // check endpoint B (param=1)
 //            epDir = Direction(1);
-//            double distB = (new Vector2 (P[2].X - origin.X, P[2].Y - origin.Y)).Length();
+//            float distB = (new Vector2 (P[2].X - origin.X, P[2].Y - origin.Y)).Length();
 //            if (distB < Math.Abs(minDistance))
 //            {
 //                minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, new Vector2 (P[2].X - origin.X, P[2].Y - origin.Y))) * distB;
@@ -249,7 +249,7 @@
 //                        qa.X + 2 * t[i] * ab.X + t[i] * t[i] * br.X,
 //                        qa.Y + 2 * t[i] * ab.Y + t[i] * t[i] * br.Y
 //                    );
-//                    double dist = qe.Length();
+//                    float dist = qe.Length();
 //                    if (dist <= Math.Abs(minDistance))
 //                    {
 //                        minDistance = Arithmetic.NonZeroSign(Vector2.Cross(ab + t[i] * br, qe)) * dist;
@@ -282,7 +282,7 @@
 //            }
 //        }
 
-//        public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+//        public override int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 //        {
 //            int total = 0;
 //            int nextDY = y > P[0].Y ? 1 : -1;
@@ -297,7 +297,7 @@
 //            {
 //                Vector2 ab = P[1] - P[0];
 //                Vector2 br = P[2] - P[1] - ab;
-//                Span<double> t = stackalloc double[2];
+//                Span<float> t = stackalloc float[2];
 //                int solutions = EquationSolver.SolveQuadratic(t, br.Y, 2 * ab.Y, P[0].Y - y);
 //                // Sort solutions
 //                if (solutions >= 2 && t[0] > t[1])
@@ -346,20 +346,20 @@
 //            return total;
 //        }
 
-//        public override void Bound(ref double l, ref double b, ref double r, ref double t)
+//        public override void Bound(ref float l, ref float b, ref float r, ref float t)
 //        {
 //            PointBounds(P[0], ref l, ref b, ref r, ref t);
 //            PointBounds(P[2], ref l, ref b, ref r, ref t);
 //            Vector2 bot = (P[1] - P[0]) - (P[2] - P[1]);
 //            if (bot.X != 0)
 //            {
-//                double param = (P[1].X - P[0].X) / bot.X;
+//                float param = (P[1].X - P[0].X) / bot.X;
 //                if (param > 0 && param < 1)
 //                    PointBounds(Point(param), ref l, ref b, ref r, ref t);
 //            }
 //            if (bot.Y != 0)
 //            {
-//                double param = (P[1].Y - P[0].Y) / bot.Y;
+//                float param = (P[1].Y - P[0].Y) / bot.Y;
 //                if (param > 0 && param < 1)
 //                    PointBounds(Point(param), ref l, ref b, ref r, ref t);
 //            }
@@ -391,15 +391,15 @@
 
 //        public override void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2)
 //        {
-//            part0 = new QuadraticSegment(P[0], Arithmetic.Mix(P[0], P[1], 1 / 3.0), Point(1 / 3.0), Color);
-//            part1 = new QuadraticSegment(Point(1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 5 / 9.0), Arithmetic.Mix(P[1], P[2], 4 / 9.0), .5), Point(2 / 3.0), Color);
-//            part2 = new QuadraticSegment(Point(2 / 3.0), Arithmetic.Mix(P[1], P[2], 2 / 3.0), P[2], Color);
+//            part0 = new QuadraticSegment(P[0], Arithmetic.Mix(P[0], P[1], 1 / 3.0f), Point(1 / 3.0f), Color);
+//            part1 = new QuadraticSegment(Point(1 / 3.0f), Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 5 / 9.0f), Arithmetic.Mix(P[1], P[2], 4 / 9.0f), .5), Point(2 / 3.0f), Color);
+//            part2 = new QuadraticSegment(Point(2 / 3.0f), Arithmetic.Mix(P[1], P[2], 2 / 3.0f), P[2], Color);
 //        }
 
 //        public EdgeSegment ConvertToCubic() =>
 //            new CubicSegment(P[0],
-//                             Arithmetic.Mix(P[0], P[1], 2.0 / 3.0),
-//                             Arithmetic.Mix(P[1], P[2], 1.0 / 3.0),
+//                             Arithmetic.Mix(P[0], P[1], 2.0f / 3.0f),
+//                             Arithmetic.Mix(P[1], P[2], 1.0f / 3.0f),
 //                             P[2],
 //                             Color);
 //    }
@@ -416,13 +416,13 @@
 //        public override EdgeSegment Clone() => new CubicSegment(P[0], P[1], P[2], P[3], Color);
 //        public override int Type() => EDGE_TYPE;
 //        public override Vector2[] ControlPoints() => P;
-//        public override Vector2 Point(double t)
+//        public override Vector2 Point(float t)
 //        {
 //            Vector2 p12 = Arithmetic.Mix(P[1], P[2], t);
 //            return (Vector2)Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], t), p12, t),
 //                               Arithmetic.Mix(p12, Arithmetic.Mix(P[2], P[3], t), t), t);
 //        }
-//        public override Vector2 Direction(double t)
+//        public override Vector2 Direction(float t)
 //        {
 //            Vector2 tangent = Arithmetic.Mix(Arithmetic.Mix(P[1] - P[0], P[2] - P[1], t),
 //                                   Arithmetic.Mix(P[2] - P[1], P[3] - P[2], t), t);
@@ -433,11 +433,11 @@
 //            }
 //            return tangent;
 //        }
-//        public override Vector2 DirectionChange(double t) =>
+//        public override Vector2 DirectionChange(float t) =>
 //            Arithmetic.Mix((P[2] - P[1]) - (P[1] - P[0]),
 //                (P[3] - P[2]) - (P[2] - P[1]), t);
 
-//        public override SignedDistance SignedDistance(Vector2 origin, out double param)
+//        public override SignedDistance SignedDistance(Vector2 origin, out float param)
 //        {
 //            Vector2 qa = P[0] - origin;
 //            Vector2 ab = P[1] - P[0];
@@ -445,11 +445,11 @@
 //            Vector2 as_ = (P[3] - P[2]) - (P[2] - P[1]) - br;
 
 //            Vector2 epDir = Direction(0);
-//            double minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, qa)) * qa.Length(); // distance from A
+//            float minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, qa)) * qa.Length(); // distance from A
 //            param = -Vector2.Dot(qa, epDir) / Vector2.Dot(epDir, epDir);
 //            {
 //                epDir = Direction(1);
-//                double distance = (P[3] - origin).Length(); // distance from B
+//                float distance = (P[3] - origin).Length(); // distance from B
 //                if (distance < Math.Abs(minDistance))
 //                {
 //                    minDistance = Arithmetic.NonZeroSign(Vector2.Cross(epDir, P[3] - origin)) * distance;
@@ -459,7 +459,7 @@
 //            // Iterative minimum distance search
 //            for (int i = 0; i <= MSDFGEN_CUBIC_SEARCH_STARTS; ++i)
 //            {
-//                double t = (double)i / MSDFGEN_CUBIC_SEARCH_STARTS;
+//                float t = (double)i / MSDFGEN_CUBIC_SEARCH_STARTS;
 //                Vector2 qe = qa + 3 * t * ab + 3 * t * t * br + t * t * t *as_;
 //                for (int step = 0; step < MSDFGEN_CUBIC_SEARCH_STEPS; ++step)
 //                {
@@ -470,7 +470,7 @@
 //                    if (t <= 0 || t >= 1)
 //                        break;
 //                    qe = qa + 3 * t * ab + 3 * t * t * br + t * t * t *as_;
-//                    double distance = qe.Length();
+//                    float distance = qe.Length();
 //                    if (distance < Math.Abs(minDistance))
 //                    {
 //                        minDistance = Arithmetic.NonZeroSign(Vector2.Cross(d1, qe)) * distance;
@@ -488,7 +488,7 @@
 
 //        }
 
-//        public override int ScanlineIntersections(Span<double> x, Span<int> dy, double y)
+//        public override int ScanlineIntersections(Span<float> x, Span<int> dy, float y)
 //        {
 //            int total = 0;
 //            int nextDY = y > P[0].Y ? 1 : -1;
@@ -504,7 +504,7 @@
 //                Vector2 ab = P[1] - P[0];
 //                Vector2 br = P[2] - P[1] - ab;
 //                Vector2 as_ = (P[3] - P[2]) - (P[2] - P[1]) - br;
-//                Span<double> t = stackalloc double[3];
+//                Span<float> t = stackalloc float[3];
 //                int solutions = EquationSolver.SolveCubic(t, as_.Y, 3 * br.Y, 3 * ab.Y, P[0].Y - y);
 //                // Sort solutions
 //                if (solutions >= 2)
@@ -562,14 +562,14 @@
 //            return total;
 //        }
 
-//        public override void Bound(ref double l, ref double b, ref double r, ref double t)
+//        public override void Bound(ref float l, ref float b, ref float r, ref float t)
 //        {
 //            PointBounds(P[0], ref l, ref b, ref r, ref t);
 //            PointBounds(P[3], ref l, ref b, ref r, ref t);
 //            Vector2 a0 = P[1] - P[0];
 //            Vector2 a1 = 2 * (P[2] - P[1] - a0);
 //            Vector2 a2 = P[3] - 3 * P[2] + 3 * P[1] - P[0];
-//            Span<double> prms = stackalloc double[2];
+//            Span<float> prms = stackalloc float[2];
 //            int solutions;
 //            solutions = EquationSolver.SolveQuadratic(prms, a2.X, a1.X, a0.X);
 //            for (int i = 0; i < solutions; ++i)
@@ -600,12 +600,12 @@
 
 //        public override void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2)
 //        {
-//            part0 = new CubicSegment(P[0], P[0] == P[1] ? P[0] : Arithmetic.Mix(P[0], P[1], 1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 1 / 3.0), Arithmetic.Mix(P[1], P[2], 1 / 3.0), 1 / 3.0), Point(1 / 3.0), Color);
-//            part1 = new CubicSegment(Point(1 / 3.0),
-//                Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 1 / 3.0), Arithmetic.Mix(P[1], P[2], 1 / 3.0), 1 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 1 / 3.0), Arithmetic.Mix(P[2], P[3], 1 / 3.0), 1 / 3.0), 2 / 3.0),
-//                Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 2 / 3.0), Arithmetic.Mix(P[1], P[2], 2 / 3.0), 2 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 2 / 3.0), Arithmetic.Mix(P[2], P[3], 2 / 3.0), 2 / 3.0), 1 / 3.0),
-//                Point(2 / 3.0), Color);
-//            part2 = new CubicSegment(Point(2 / 3.0), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 2 / 3.0), Arithmetic.Mix(P[2], P[3], 2 / 3.0), 2 / 3.0), P[2] == P[3] ? P[3] : Arithmetic.Mix(P[2], P[3], 2 / 3.0), P[3], Color);
+//            part0 = new CubicSegment(P[0], P[0] == P[1] ? P[0] : Arithmetic.Mix(P[0], P[1], 1 / 3.0f), Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 1 / 3.0f), Arithmetic.Mix(P[1], P[2], 1 / 3.0f), 1 / 3.0f), Point(1 / 3.0f), Color);
+//            part1 = new CubicSegment(Point(1 / 3.0f),
+//                Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 1 / 3.0f), Arithmetic.Mix(P[1], P[2], 1 / 3.0f), 1 / 3.0f), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 1 / 3.0f), Arithmetic.Mix(P[2], P[3], 1 / 3.0f), 1 / 3.0f), 2 / 3.0f),
+//                Arithmetic.Mix(Arithmetic.Mix(Arithmetic.Mix(P[0], P[1], 2 / 3.0f), Arithmetic.Mix(P[1], P[2], 2 / 3.0f), 2 / 3.0f), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 2 / 3.0f), Arithmetic.Mix(P[2], P[3], 2 / 3.0f), 2 / 3.0f), 1 / 3.0f),
+//                Point(2 / 3.0f), Color);
+//            part2 = new CubicSegment(Point(2 / 3.0f), Arithmetic.Mix(Arithmetic.Mix(P[1], P[2], 2 / 3.0f), Arithmetic.Mix(P[2], P[3], 2 / 3.0f), 2 / 3.0f), P[2] == P[3] ? P[3] : Arithmetic.Mix(P[2], P[3], 2 / 3.0f), P[3], Color);
 
 //        }
 //    }

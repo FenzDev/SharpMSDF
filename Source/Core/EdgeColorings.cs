@@ -1,6 +1,7 @@
 
 using SharpMSDF.Utilities;
 using System.ComponentModel;
+using System.Numerics;
 
 namespace SharpMSDF.Core
 {
@@ -15,18 +16,18 @@ namespace SharpMSDF.Core
             return (int)(3 + 2.875 * position / (n - 1) - 1.4375 + 0.5) - 3;
         }
 
-        private static bool IsCorner(Vector2 aDir, Vector2 bDir, double crossThreshold)
+        private static bool IsCorner(Vector2 aDir, Vector2 bDir, float crossThreshold)
         {
-            return Vector2.Dot(aDir, bDir) <= 0 || Math.Abs(Vector2.Cross(aDir, bDir)) > crossThreshold;
+            return Vector2.Dot(aDir, bDir) <= 0 || Math.Abs(aDir.Cross(bDir)) > crossThreshold;
         }
 
-        private static double EstimateEdgeLength(EdgeSegment edge)
+        private static float EstimateEdgeLength(EdgeSegment edge)
         {
-            double len = 0;
+            float len = 0;
             Vector2 prev = edge.Point(0);
             for (int i = 1; i <= MSDFGEN_EDGE_LENGTH_PRECISION; ++i)
             {
-                Vector2 cur = edge.Point((1.0 / MSDFGEN_EDGE_LENGTH_PRECISION) * i);
+                Vector2 cur = edge.Point((1.0f / MSDFGEN_EDGE_LENGTH_PRECISION) * i);
                 len += (cur - prev).Length();
                 prev = cur;
             }
@@ -68,9 +69,9 @@ namespace SharpMSDF.Core
                 SwitchColor(ref color, ref seed);
         }
 
-        public static void Simple(ref Shape shape, double angleThreshold, ulong seed = 0)
+        public static void Simple(ref Shape shape, float angleThreshold, ulong seed = 0)
         {
-            double crossThreshold = Math.Sin(angleThreshold);
+            float crossThreshold = MathF.Sin(angleThreshold);
             EdgeColor color = InitColor(ref seed);
 
             Span<EdgeSegment> parts = stackalloc EdgeSegment[7];
@@ -86,7 +87,7 @@ namespace SharpMSDF.Core
             }
         }
 
-        private static void IdentifyCorners(ref ulong seed, double crossThreshold, ref EdgeColor color, Span<EdgeSegment> parts, ref Contour contour)
+        private static void IdentifyCorners(ref ulong seed, float crossThreshold, ref EdgeColor color, Span<EdgeSegment> parts, ref Contour contour)
         {
             Span<EdgeColor> colors = stackalloc EdgeColor[3];
             Span<int> corners = stackalloc int[contour.Edges.Count];
@@ -179,14 +180,14 @@ namespace SharpMSDF.Core
         private struct InkTrapCorner
         {
             public int Index;
-            public double PrevEdgeLengthEstimate;
+            public float PrevEdgeLengthEstimate;
             public bool Minor;
             public EdgeColor Color;
         }
 
-        public static void InkTrap(ref Shape shape, double angleThreshold, ulong seed = 0)
+        public static void InkTrap(ref Shape shape, float angleThreshold, ulong seed = 0)
         {
-            double crossThreshold = Math.Sin(angleThreshold);
+            float crossThreshold = MathF.Sin(angleThreshold);
             EdgeColor color = InitColor(ref seed);
             
             Span<EdgeColor> colors = stackalloc EdgeColor[3];
@@ -197,12 +198,12 @@ namespace SharpMSDF.Core
                 if (contour.Edges.Count == 0)
                     continue;
 
-                double splineLength = 0;
+                float splineLength = 0;
                 InkTrapIdentifyCorners(ref seed, crossThreshold, ref color, colors, ref contour, ref splineLength);
             }
         }
 
-        private static void InkTrapIdentifyCorners(ref ulong seed, double crossThreshold, ref EdgeColor color,  Span<EdgeColor> colors, ref Contour contour, ref double splineLength)
+        private static void InkTrapIdentifyCorners(ref ulong seed, float crossThreshold, ref EdgeColor color,  Span<EdgeColor> colors, ref Contour contour, ref float splineLength)
         {
             Span<InkTrapCorner> corners = stackalloc InkTrapCorner[contour.Edges.Count];
             int cornersCount = 0;
@@ -286,9 +287,9 @@ namespace SharpMSDF.Core
                     corners[0] = corner;
                     for (int i = 0; i < cornersCount; i++)
                     {
-                        double a = corners[i].PrevEdgeLengthEstimate;
-                        double b = corners[(i + 1) % cornersCount].PrevEdgeLengthEstimate;
-                        double c = corners[(i + 2) % cornersCount].PrevEdgeLengthEstimate;
+                        float a = corners[i].PrevEdgeLengthEstimate;
+                        float b = corners[(i + 1) % cornersCount].PrevEdgeLengthEstimate;
+                        float c = corners[(i + 2) % cornersCount].PrevEdgeLengthEstimate;
 
                         if (a > b && b < c)
                         {

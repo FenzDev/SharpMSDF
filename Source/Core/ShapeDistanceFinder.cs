@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,17 +11,17 @@ namespace SharpMSDF.Core
         where  TDistanceSelector : IDistanceSelector<TDistance>, new()
         where TCombiner : IContourCombiner<TDistanceSelector,TDistance>, new()
     {
-        public delegate double DistanceType(); // Will be overridden by TContourCombiner.DistanceType
+        public delegate float DistanceType(); // Will be overridden by TContourCombiner.DistanceType
 
-        private readonly Shape Shape;
+        private Shape Shape;
         private readonly IContourCombiner<TDistanceSelector, TDistance> ContourCombiner;
         private readonly EdgeCache[] ShapeEdgeCache; // real type: TContourCombiner.EdgeSelectorType.EdgeCache
 
         public ShapeDistanceFinder(Shape shape)
         {
-            this.Shape = shape;
+            Shape = shape;
             ContourCombiner = new TCombiner();
-            ContourCombiner.NonCtorInit(ref shape);
+            ContourCombiner.NonCtorInit(shape);
             ShapeEdgeCache = new EdgeCache[shape.EdgeCount()];
         }
 
@@ -38,7 +39,7 @@ namespace SharpMSDF.Core
                     var contour = Shape.Contours[c];
                     if (contour.Edges.Count > 0)
                     {
-                        var edgeSelector = ContourCombiner.EdgeSelector(c);
+                        var edgeSelector = ContourCombiner.GetEdgeSelector(c);
 
                         EdgeSegment prevEdge = contour.Edges.Count >= 2
                             ? contour.Edges[contour.Edges.Count - 2]
@@ -54,6 +55,8 @@ namespace SharpMSDF.Core
                             prevEdge = curEdge;
                             curEdge = nextEdge;
                         }
+
+                        ContourCombiner.SetEdgeSelector(c, edgeSelector);
                     }
                 }
 
@@ -64,7 +67,7 @@ namespace SharpMSDF.Core
         public unsafe static TDistance OneShotDistance(Shape shape, Vector2 origin)
         {
             var combiner = new TCombiner();
-            combiner.NonCtorInit(ref shape);
+            combiner.NonCtorInit(shape);
             combiner.Reset(origin);
 
             for (int i = 0; i < shape.Contours.Count; ++i)
@@ -73,7 +76,7 @@ namespace SharpMSDF.Core
                 if (contour.Edges.Count == 0)
                     continue;
 
-                var edgeSelector = combiner.EdgeSelector(i);
+                var edgeSelector = combiner.GetEdgeSelector(i);
 
                 EdgeSegment prevEdge = contour.Edges.Count >= 2
                     ? contour.Edges[contour.Edges.Count - 2]
@@ -90,6 +93,8 @@ namespace SharpMSDF.Core
                     prevEdge = curEdge;
                     curEdge = nextEdge;
                 }
+
+                combiner.SetEdgeSelector(i, edgeSelector);
             }
 
             return combiner.Distance();

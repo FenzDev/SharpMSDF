@@ -18,9 +18,9 @@ namespace SharpMSDF.Core
             for (int y = 0; y < output.SubHeight; ++y)
             {
                 int row = shape.InverseYAxis ? output.SubHeight - y - 1 : y;
-                shape.Scanline(scanline, projection.UnprojectY(y + .5));
+                shape.Scanline(scanline, projection.UnprojectY(y + .5f));
                 for (int x = 0; x < output.SubWidth; ++x)
-                    output[x, row] = scanline.Filled(projection.UnprojectX(x + .5), fillRule) ? 1.0f: 0.0f;
+                    output[x, row] = scanline.Filled(projection.UnprojectX(x + .5f), fillRule) ? 1.0f: 0.0f;
             }
         }
         /// Fixes the sign of the input signed distance field, so that it matches the Shape's rasterized fill.
@@ -30,10 +30,10 @@ namespace SharpMSDF.Core
             for (int y = 0; y < sdf.SubHeight; ++y)
             {
                 int row = shape.InverseYAxis ? sdf.SubHeight - y - 1 : y;
-                shape.Scanline(scanline, projection.UnprojectY(y + .5));
+                shape.Scanline(scanline, projection.UnprojectY(y + .5f));
                 for (int x = 0; x < sdf.SubWidth; ++x)
                 {
-                    bool fill = scanline.Filled(projection.UnprojectX(x + .5), fillRule);
+                    bool fill = scanline.Filled(projection.UnprojectX(x + .5f), fillRule);
                     if ((sdf[x, row] > .5f) != fill)
                         sdf[x, row] = 1.0f - sdf[x, row];
                 }
@@ -57,11 +57,11 @@ namespace SharpMSDF.Core
                 for (int y = 0; y < h; ++y)
                 {
                     int row = shape.InverseYAxis ? h - y - 1 : y;
-                    shape.Scanline(scanline, projection.UnprojectY(y + 0.5));
+                    shape.Scanline(scanline, projection.UnprojectY(y + 0.5f));
 
                     for (int x = 0; x < w; ++x)
                     {
-                        bool fill = scanline.Filled(projection.UnprojectX(x + 0.5), fillRule);
+                        bool fill = scanline.Filled(projection.UnprojectX(x + 0.5f), fillRule);
 
                         //float *Msd = sdf(x, row);
                         float* msd = pixels + sdf.GetIndex(x, y);

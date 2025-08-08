@@ -8,7 +8,7 @@ namespace SharpMSDF.Atlas
 {
     public struct Bounds
     {
-        public double L, B, R, T;
+        public float L, B, R, T;
     }
 
     /// <summary>
@@ -17,7 +17,7 @@ namespace SharpMSDF.Atlas
     public struct GlyphBox
     {
         public ushort Index;
-        public double Advance;
+        public float Advance;
         public Bounds Bounds;   
         public AtlasRectangle Rect;
 

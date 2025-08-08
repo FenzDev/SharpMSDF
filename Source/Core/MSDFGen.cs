@@ -12,34 +12,38 @@ using BitmapRefMulti = SharpMSDF.Core.BitmapRef<float>;
 using BitmapRefMultiAndTrue = SharpMSDF.Core.BitmapRef<float>;
 using Typography.OpenFont;
 using Typography.OpenFont.Tables;
-using System.Diagnostics;
+using System.Numerics;
 
 
 namespace SharpMSDF.Core
 {
     public static class MSDFGen
     {
-        public unsafe abstract class DistancePixelConversion<TDistance>
+        public unsafe interface DistancePixelConversion<TDistance>
         {
-            public DistanceMapping Mapping;
+            public DistanceMapping Mapping { get; set; }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public abstract void Convert(float* pixels, TDistance distance, int s = 0, int s2 = 0);
+            public void Convert(float* pixels, TDistance distance, int s = 0, int s2 = 0);
         }
 
-        public unsafe class DistancePixelConversionSingle : DistancePixelConversion<double>
+        public unsafe struct DistancePixelConversionSingle : DistancePixelConversion<float>
         {
+            public DistanceMapping Mapping { get; set; }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public override void Convert(float* pixels, double distance, int s=0, int s2=0)
+            public void Convert(float* pixels, float distance, int s=0, int s2=0)
             {
                 *pixels = (float)Mapping[distance];
             }
         }
 
-        public unsafe class DistancePixelConversionMulti : DistancePixelConversion<MultiDistance>
+        public unsafe struct DistancePixelConversionMulti : DistancePixelConversion<MultiDistance>
         {
+            public DistanceMapping Mapping { get; set; }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public override void Convert(float* pixels, MultiDistance distance, int s=0, int s2=0)
+            public void Convert(float* pixels, MultiDistance distance, int s=0, int s2=0)
             {
                 *pixels = (float)Mapping[distance.R];
                 *(pixels+1) = (float)Mapping[distance.G];
@@ -47,10 +51,12 @@ namespace SharpMSDF.Core
             }
         }
 
-        public unsafe class DistancePixelConversionMultiAndTrue : DistancePixelConversion<MultiAndTrueDistance>
+        public unsafe struct DistancePixelConversionMultiAndTrue : DistancePixelConversion<MultiAndTrueDistance>
         {
+            public DistanceMapping Mapping { get; set; }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public override void Convert(float* pixels, MultiAndTrueDistance distance, int s=0, int s2=0)
+            public void Convert(float* pixels, MultiAndTrueDistance distance, int s=0, int s2=0)
             {
                 *pixels = (float)Mapping[distance.R];
                 *(pixels+1) = (float)Mapping[distance.G];
@@ -71,7 +77,7 @@ namespace SharpMSDF.Core
             // TODO: potential of less H-Allocation
             var converter = new TConverter() { Mapping = transformation.DistanceMapping };
             // 2. Create your combiner‐driven distance finder
-            var distanceFinder = new ShapeDistanceFinder<TCombiner,TDistanceSelector, TDistance>(shape);
+            var distanceFinder = new ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>(shape);
 
             // 3. Parallel loop over rows
             bool rightToLeft = false;
@@ -107,10 +113,10 @@ namespace SharpMSDF.Core
         public static void GenerateSDF(BitmapRefSingle output, Shape shape, SDFTransformation transformation, GeneratorConfig config = default)
         {
             if (config.OverlapSupport)
-                GenerateDistanceField<OverlappingContourCombiner<TrueDistanceSelector, double>, DistancePixelConversionSingle, TrueDistanceSelector, double>
+                GenerateDistanceField<OverlappingContourCombiner<TrueDistanceSelector, float>, DistancePixelConversionSingle, TrueDistanceSelector, float>
                     (output, shape, transformation);
             else
-                GenerateDistanceField<SimpleContourCombiner<TrueDistanceSelector, double>, DistancePixelConversionSingle, TrueDistanceSelector, double>
+                GenerateDistanceField<SimpleContourCombiner<TrueDistanceSelector, float>, DistancePixelConversionSingle, TrueDistanceSelector, float>
                     (output, shape, transformation);
         }
 
@@ -120,10 +126,10 @@ namespace SharpMSDF.Core
         public static void GeneratePSDF(BitmapRefSingle output, Shape shape, SDFTransformation transformation, GeneratorConfig config = default)
         {
             if (config.OverlapSupport)
-                GenerateDistanceField<OverlappingContourCombiner<PerpendicularDistanceSelector, double>, DistancePixelConversionSingle, PerpendicularDistanceSelector, double>
+                GenerateDistanceField<OverlappingContourCombiner<PerpendicularDistanceSelector, float>, DistancePixelConversionSingle, PerpendicularDistanceSelector, float>
                     (output, shape, transformation);
             else
-                GenerateDistanceField<SimpleContourCombiner<PerpendicularDistanceSelector, double>, DistancePixelConversionSingle, PerpendicularDistanceSelector, double>
+                GenerateDistanceField<SimpleContourCombiner<PerpendicularDistanceSelector, float>, DistancePixelConversionSingle, PerpendicularDistanceSelector, float>
                     (output, shape, transformation);
         }
 
@@ -136,13 +142,13 @@ namespace SharpMSDF.Core
             {
                 GenerateDistanceField<OverlappingContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
                     (output, shape, transformation);
-                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(output, shape, transformation, config);
+                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, transformation, config);
             }
             else
             {
                 GenerateDistanceField<SimpleContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
                     (output, shape, transformation);
-                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, double>>(output, shape, transformation, config);
+                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, transformation, config);
             }
         }
 
@@ -155,13 +161,13 @@ namespace SharpMSDF.Core
             {
                 GenerateDistanceField<OverlappingContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
                     (output, shape, transformation);
-                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(output, shape, transformation, config);
+                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, transformation, config);
             }
             else
             {
                 GenerateDistanceField<SimpleContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
                     (output, shape, transformation);
-                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, double>>(output, shape, transformation, config);
+                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, transformation, config);
             }
         }
 

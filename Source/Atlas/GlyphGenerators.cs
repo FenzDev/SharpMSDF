@@ -42,7 +42,7 @@ namespace SharpMSDF.Atlas
 				{
 					config.ErrorCorrection.Mode = attribs.Config.ErrorCorrection.Mode;
 					config.ErrorCorrection.DistanceCheckMode = ConfigDistanceCheckMode.DO_NOT_CHECK_DISTANCE;
-					MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
+					MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
 				}
 			}
 		}
@@ -60,7 +60,7 @@ namespace SharpMSDF.Atlas
 				{
 					config.ErrorCorrection.Mode = attribs.Config.ErrorCorrection.Mode;
 					config.ErrorCorrection.DistanceCheckMode = ConfigDistanceCheckMode.DO_NOT_CHECK_DISTANCE;
-					MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, double>>(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
+					MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, glyph.Shape, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
 				}
 			}
 		}

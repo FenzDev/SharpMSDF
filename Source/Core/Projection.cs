@@ -1,4 +1,5 @@
-﻿using static System.Formats.Asn1.AsnWriter;
+﻿using System.Numerics;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace SharpMSDF.Core
 {
@@ -24,13 +25,13 @@ namespace SharpMSDF.Core
         /// Converts the vector from pixel coordinate space.
         public Vector2 UnprojectVector(Vector2 vector) => vector / Scale;
         /// Converts the X-coordinate from Shape to pixel coordinate space.
-        public double ProjectX(double x) => Scale.X * (x + Translate.X);
+        public float ProjectX(float x) => Scale.X * (x + Translate.X);
         /// Converts the Y-coordinate from Shape to pixel coordinate space.
-        public double ProjectY(double y) => Scale.Y * (y + Translate.Y);
+        public float ProjectY(float y) => Scale.Y * (y + Translate.Y);
         /// Converts the X-coordinate from pixel to Shape coordinate space.
-        public double UnprojectX(double x) => x / Scale.X - Translate.X;
+        public float UnprojectX(float x) => x / Scale.X - Translate.X;
         /// Converts the Y-coordinate from pixel to Shape coordinate space.
-        public double UnprojectY(double y) => y / Scale.Y - Translate.Y;
+        public float UnprojectY(float y) => y / Scale.Y - Translate.Y;
 
         public readonly Vector2 Scale;
         public readonly Vector2 Translate;

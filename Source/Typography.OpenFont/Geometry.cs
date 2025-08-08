@@ -13,7 +13,7 @@ namespace Typography.OpenFont
         //  ...  the point is on the curve; otherwise, it is off the curve....
 
         internal Vector2 P;
-        internal bool onCurve;
+        public bool onCurve;
 
         public GlyphPointF(float x, float y, bool onCurve)
         {

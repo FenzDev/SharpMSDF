@@ -54,6 +54,8 @@ namespace SharpMSDF.Utilities
             return span.Data + index;
         }
 
-        public readonly Span<T> AsSpan() => new Span<T>(Data, Count);
+        public readonly Span<T> SafeSpan => new (Data, Count);
+
+        public override string ToString() => $"PtrSpan<{typeof(T).Name}> Count={Count} Capacity={Capacity}";
     }
 }

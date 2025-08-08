@@ -2,7 +2,7 @@
 
 namespace SharpMSDF.Core
 {
-    public class Scanline
+    public struct Scanline
     {
         
         ///<summary>
@@ -11,7 +11,7 @@ namespace SharpMSDF.Core
         public struct Intersection
         {
             /// X coordinate.
-            public double X;
+            public float X;
             /// Normalized Y direction of the oriented edge at the Point of intersection.
             public int Direction;
         };
@@ -41,16 +41,16 @@ namespace SharpMSDF.Core
             return false;
         }
 
-        public static double Overlap(Scanline a, Scanline b, double xFrom, double xTo, FillRule fillRule)
+        public static float Overlap(Scanline a, Scanline b, float xFrom, float xTo, FillRule fillRule)
         {
-            double total = 0;
+            float total = 0;
             bool aInside = false, bInside = false;
             int ai = 0, bi = 0;
-            double ax = a._Intersections.Count != 0 ? a._Intersections[ai].X : xTo;
-            double bx = b._Intersections.Count != 0 ? b._Intersections[bi].X : xTo;
+            float ax = a._Intersections.Count != 0 ? a._Intersections[ai].X : xTo;
+            float bx = b._Intersections.Count != 0 ? b._Intersections[bi].X : xTo;
             while (ax < xFrom || bx < xFrom)
             {
-                double xNext = Math.Min(ax, bx);
+                float xNext = Math.Min(ax, bx);
                 if (ax == xNext && ai < (int)a._Intersections.Count)
                 {
                     aInside = InterpretFillRule(a._Intersections[ai].Direction, fillRule);
@@ -62,10 +62,10 @@ namespace SharpMSDF.Core
                     bx = ++bi < (int)b._Intersections.Count ? b._Intersections[bi].X : xTo;
                 }
             }
-            double x = xFrom;
+            float x = xFrom;
             while (ax < xTo || bx < xTo)
             {
-                double xNext = Math.Min(ax, bx);
+                float xNext = Math.Min(ax, bx);
                 if (aInside == bInside)
                     total += xNext - x;
                 if (ax == xNext && ai < (int)a._Intersections.Count)
@@ -93,10 +93,10 @@ namespace SharpMSDF.Core
         }
 
         /// Returns the number of _Intersections left of x.
-        public int CountIntersections(double x) => MoveTo(x) + 1;
+        public int CountIntersections(float x) => MoveTo(x) + 1;
             
         /// Returns the total sign of _Intersections left of x.
-        public int SumIntersections(double x)
+        public int SumIntersections(float x)
         {
             int index = MoveTo(x);
             if (index >= 0)
@@ -105,7 +105,7 @@ namespace SharpMSDF.Core
         }
             
         /// Decides whether the scanline is filled at x based on fill rule.
-        public bool Filled(double x, FillRule fillRule) => InterpretFillRule(SumIntersections(x), fillRule);
+        public bool Filled(float x, FillRule fillRule) => InterpretFillRule(SumIntersections(x), fillRule);
 
         List<Intersection> _Intersections;
         int _LastIndex;
@@ -125,7 +125,7 @@ namespace SharpMSDF.Core
                 }
             }
         }
-        int MoveTo(double x)
+        int MoveTo(float x)
         {
             if (_Intersections.Count == 0)
                 return -1;

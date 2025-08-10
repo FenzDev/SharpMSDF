@@ -10,7 +10,13 @@ namespace SharpMSDF.Core
 
         public float Distance;
         public float Dot;
-        
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public SignedDistance()
+        {
+            Distance = float.NegativeInfinity;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SignedDistance(float dist, float d)
         {

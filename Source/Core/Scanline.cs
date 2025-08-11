@@ -2,7 +2,7 @@
 
 namespace SharpMSDF.Core
 {
-    public struct Scanline
+    public ref struct Scanline
     {
         
         ///<summary>
@@ -17,11 +17,15 @@ namespace SharpMSDF.Core
         };
 
 
+
         public Scanline()
         {
             _LastIndex = 0;
         }
-
+        public Scanline(Span<Intersection> intersections)
+        {
+            Intersections = intersections;
+        }
 
         private static bool InterpretFillRule(int intersections, FillRule fillRule)
         {
@@ -46,20 +50,20 @@ namespace SharpMSDF.Core
             float total = 0;
             bool aInside = false, bInside = false;
             int ai = 0, bi = 0;
-            float ax = a._Intersections.Count != 0 ? a._Intersections[ai].X : xTo;
-            float bx = b._Intersections.Count != 0 ? b._Intersections[bi].X : xTo;
+            float ax = a.Intersections.Length != 0 ? a.Intersections[ai].X : xTo;
+            float bx = b.Intersections.Length != 0 ? b.Intersections[bi].X : xTo;
             while (ax < xFrom || bx < xFrom)
             {
                 float xNext = Math.Min(ax, bx);
-                if (ax == xNext && ai < (int)a._Intersections.Count)
+                if (ax == xNext && ai < (int)a.Intersections.Length)
                 {
-                    aInside = InterpretFillRule(a._Intersections[ai].Direction, fillRule);
-                    ax = ++ai < (int)a._Intersections.Count ? a._Intersections[ai].X : xTo;
+                    aInside = InterpretFillRule(a.Intersections[ai].Direction, fillRule);
+                    ax = ++ai < (int)a.Intersections.Length ? a.Intersections[ai].X : xTo;
                 }
-                if (bx == xNext && bi < (int)b._Intersections.Count)
+                if (bx == xNext && bi < (int)b.Intersections.Length)
                 {
-                    bInside = InterpretFillRule(b._Intersections[bi].Direction, fillRule);
-                    bx = ++bi < (int)b._Intersections.Count ? b._Intersections[bi].X : xTo;
+                    bInside = InterpretFillRule(b.Intersections[bi].Direction, fillRule);
+                    bx = ++bi < (int)b.Intersections.Length ? b.Intersections[bi].X : xTo;
                 }
             }
             float x = xFrom;
@@ -68,15 +72,15 @@ namespace SharpMSDF.Core
                 float xNext = Math.Min(ax, bx);
                 if (aInside == bInside)
                     total += xNext - x;
-                if (ax == xNext && ai < (int)a._Intersections.Count)
+                if (ax == xNext && ai < (int)a.Intersections.Length)
                 {
-                    aInside = InterpretFillRule(a._Intersections[ai].Direction, fillRule);
-                    ax = ++ai < (int)a._Intersections.Count ? a._Intersections[ai].X : xTo;
+                    aInside = InterpretFillRule(a.Intersections[ai].Direction, fillRule);
+                    ax = ++ai < (int)a.Intersections.Length ? a.Intersections[ai].X : xTo;
                 }
-                if (bx == xNext && bi < (int)b._Intersections.Count)
+                if (bx == xNext && bi < (int)b.Intersections.Length)
                 {
-                    bInside = InterpretFillRule(b._Intersections[bi].Direction, fillRule);
-                    bx = ++bi < (int)b._Intersections.Count ? b._Intersections[bi].X : xTo;
+                    bInside = InterpretFillRule(b.Intersections[bi].Direction, fillRule);
+                    bx = ++bi < (int)b.Intersections.Length ? b.Intersections[bi].X : xTo;
                 }
                 x = xNext;
             }
@@ -86,9 +90,9 @@ namespace SharpMSDF.Core
         }
 
         /// Populates the intersection list.
-        public void SetIntersections(List<Intersection> intersections)
+        public void SetIntersections(Span<Intersection> intersections)
         {
-            _Intersections = intersections;
+            Intersections = intersections;
             Preprocess();
         }
 
@@ -100,37 +104,37 @@ namespace SharpMSDF.Core
         {
             int index = MoveTo(x);
             if (index >= 0)
-                return _Intersections[index].Direction;
+                return Intersections[index].Direction;
             return 0;
         }
             
         /// Decides whether the scanline is filled at x based on fill rule.
         public bool Filled(float x, FillRule fillRule) => InterpretFillRule(SumIntersections(x), fillRule);
 
-        List<Intersection> _Intersections;
+        public Span<Intersection> Intersections;
         int _LastIndex;
 
         void Preprocess()
         {
             _LastIndex = 0;
-            if (_Intersections.Count != 0)
+            if (Intersections.Length != 0)
             {
-                _Intersections.Sort((a, b) => Math.Sign(a.X - b.X));
+                Intersections.Sort((a, b) => Math.Sign(a.X - b.X));
                 int totalDirection = 0;
-                for (int i = 0; i < _Intersections.Count; i++)
+                for (int i = 0; i < Intersections.Length; i++)
                 {
-                    totalDirection += _Intersections[i].Direction;
+                    totalDirection += Intersections[i].Direction;
 
-                    _Intersections[i] = _Intersections[i] with { Direction = totalDirection };
+                    Intersections[i] = Intersections[i] with { Direction = totalDirection };
                 }
             }
         }
         int MoveTo(float x)
         {
-            if (_Intersections.Count == 0)
+            if (Intersections.Length == 0)
                 return -1;
             int index = _LastIndex;
-            if (x < _Intersections[index].X)
+            if (x < Intersections[index].X)
             {
                 do
                 {
@@ -140,11 +144,11 @@ namespace SharpMSDF.Core
                         return -1;
                     }
                     --index;
-                } while (x < _Intersections[index].X);
+                } while (x < Intersections[index].X);
             }
             else
             {
-                while (index < _Intersections.Count - 1 && x >= _Intersections[index + 1].X)
+                while (index < Intersections.Length - 1 && x >= Intersections[index + 1].X)
                     ++index;
             }
             _LastIndex = index;

@@ -1,5 +1,6 @@
 ﻿using SharpMSDF.Core;
 using SharpMSDF.IO;
+using SharpMSDF.Utilities;
 using System.Numerics;
 
 #if MSDFGEN_USE_SKIA
@@ -41,57 +42,55 @@ namespace SharpMSDF.Atlas
 
 		public GlyphGeometry() { }
 
-//		public bool Load(Typeface font, uint glyph, float geometryScale, uint codepoint, bool preprocessGeometry = true)
-//		{
-//			if (font == null)
-//				return false;
-
-
-//			FontImporter.LoadGlyph(font, codepoint, FontCoordinateScaling.None, out var _shape, ref _advance);
-
-//			if (_shape.Validate())
-//			{
-//				_index = font.GetGlyphIndex((int)codepoint);
-//				_geometryScale = geometryScale;
-//				_codepoint = codepoint;
-//				_advance *= geometryScale;
-
-//#if MSDFGEN_USE_SKIA
-//		if (preprocessGeometry)
-//		{
-//			ResolveShapeGeometry.Resolve(_shape);
-//		}
-//#endif
-
-//				_shape.Normalize();
-//				_bounds = _shape.GetBounds();
-
-//#if MSDFGEN_USE_SKIA
-//		if (!preprocessGeometry)
-//#endif
-//				{
-//					var outerPoint = new Vector2(
-//						_bounds.l - (_bounds.r - _bounds.l) - 1,
-//						_bounds.b - (_bounds.t - _bounds.b) - 1
-//					);
-
-//					if (SimpleTrueShapeDistanceFinder.OneShotDistance(_shape, outerPoint) > 0)
-//					{
-//						foreach (var contour in _shape.Contours)
-//							contour.Reverse();
-//					}
-
-//					_shape.OrientContours();
-//				}
-
-//				return true;
-//			}
-//			return false;
-//		}
-
-		public void EdgeColoring(Action<Shape, double, ulong> coloringFunc, float angleThreshold, ulong seed)
+		public bool Load(Typeface font, /*int glyphIndex, */ref PtrPool<Contour> contoursPool, ref PtrPool<EdgeSegment> segmentsPool, float geometryScale, uint codepoint, bool preprocessGeometry = true)
 		{
-			coloringFunc?.Invoke(Shape, angleThreshold, seed);
+			if (font == null)
+				return false;
+
+			ushort glyphIndex = font.GetGlyphIndex((int)codepoint);
+			Shape = FontImporter.LoadGlyph(font, glyphIndex, FontCoordinateScaling.None, ref contoursPool, ref segmentsPool, ref _advance);
+
+			if (Shape.Validate())
+			{
+				_index = glyphIndex;
+                _geometryScale = geometryScale;
+				_codepoint = codepoint;
+				_advance *= geometryScale;
+
+#if USE_SKIA
+		if (preprocessGeometry)
+		{
+			ResolveShapeGeometry.Resolve(_shape);
+		}
+#endif
+
+                Shape.Normalize();
+				_bounds = Shape.GetBounds();
+
+#if USE_SKIA
+		if (!preprocessGeometry)
+#endif
+				{
+					var outerPoint = new Vector2(
+						_bounds.l - (_bounds.r - _bounds.l) - 1,
+						_bounds.b - (_bounds.t - _bounds.b) - 1
+					);
+
+					if (SimpleTrueShapeDistanceFinder.OneShotDistance(Shape, outerPoint) > 0)
+					{
+						for (int c = 0; c < Shape.Contours.Count; c++)
+                            Shape.Contours[c].Reverse();
+					}
+				}
+
+				return true;
+			}
+			return false;
+		}
+
+		public void EdgeColoring(EdgeColoringDelegate coloringFunc, float angleThreshold, ulong seed)
+		{
+			coloringFunc?.Invoke(ref Shape, angleThreshold, seed);
 		}
 
 		public void WrapBox(GlyphAttributes glyphAttributes)
@@ -331,4 +330,6 @@ namespace SharpMSDF.Atlas
 			};
 		}
 	}
+
+	public delegate void EdgeColoringDelegate(ref Shape shape, float angleThereshold, ulong seed);
 }

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SharpMSDF.Atlas
 {
-    public partial class Charset
+    public partial struct Charset
     {
 
         public bool Load(string filename, bool disableCharLiterals = false)

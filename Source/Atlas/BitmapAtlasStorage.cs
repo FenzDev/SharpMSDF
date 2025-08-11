@@ -1,77 +1,80 @@
 ﻿using SharpMSDF.Core;
+using System.Buffers;
+using System.Drawing;
 
 namespace SharpMSDF.Atlas
 {
-    public class BitmapAtlasStorage<T> : AtlasStorage where T : struct
+    public struct BitmapAtlasStorage : IAtlasStorage<BitmapAtlasStorage>
     {
-        public Bitmap<T> Bitmap;
+        public Bitmap<byte> Bitmap;
 
         public BitmapAtlasStorage() { }
 
-        public override void Init(int width, int height, int channels)
+        public void Init(int width, int height, int channels)
         {
-            Bitmap = new Bitmap<T>(width, height, channels);
+            int size = width * height * channels;
+            var bitmapArray = ArrayPool<byte>.Shared.Rent(size);
+            Bitmap = new Bitmap<byte>(bitmapArray, width, height, channels);
             Array.Clear(Bitmap.Pixels, 0, Bitmap.Pixels.Length);
         }
 
-        public void Init(BitmapConstRef<T> bitmap)
+        public void Init(BitmapConstRef<byte> bitmap)
         {
-            Bitmap = new Bitmap<T>(bitmap.OriginalWidth, bitmap.OriginalHeight, bitmap.N);
-            Array.Copy(bitmap._Pixels, Bitmap.Pixels, Bitmap.Pixels.Length);
+            int size = bitmap.SubWidth * bitmap.SubHeight * bitmap.N;
+            var bitmapArray = ArrayPool<byte>.Shared.Rent(size);
+            Destroy();
+            Bitmap = new Bitmap<byte> (bitmapArray, bitmap.OriginalWidth, bitmap.OriginalHeight, bitmap.N);
+            Array.Copy(bitmap._Pixels, Bitmap.Pixels, size);
         }
 
-        public void Init(Bitmap<T> bitmap)
+        public void Init(Bitmap<byte> bitmap)
         {
             Bitmap = bitmap;
         }
 
-        public override void Init<TStorage>(TStorage orig, int width, int height)
+        public void Init(BitmapAtlasStorage orig, int width, int height)
         {
-            if (orig is BitmapAtlasStorage<T> origStorage)
-            {
-                Bitmap = new Bitmap<T>(width, height, origStorage.Bitmap.N);
-                Blitter.Blit(new BitmapRef<T>(Bitmap), origStorage.Bitmap, 0, 0, 0, 0, Math.Min(width, origStorage.Bitmap.Width), Math.Min(height, origStorage.Bitmap.Height));
-            }
-
+            // TODO: if length of old array is sam no need to rerent
+            Destroy();
+            var bitmapArray = ArrayPool<byte>.Shared.Rent(width*height*orig.Bitmap.N);
+            Bitmap = new Bitmap<byte>(bitmapArray, width, height, orig.Bitmap.N);
+            Blitter.Blit(new BitmapRef<byte>(Bitmap), orig.Bitmap, 0, 0, 0, 0, Math.Min(width, orig.Bitmap.Width), Math.Min(height, orig.Bitmap.Height));
         }
 
-        public override void Init<TStorage>(TStorage orig, int width, int height, Span<Remap> remapping)
+        public void Init(BitmapAtlasStorage orig, int width, int height, Span<Remap> remapping)
         {
-            if (orig is BitmapAtlasStorage<T> origStorage)
+            int size = width * height * orig.Bitmap.N;
+            Destroy();
+            var bitmapArray = ArrayPool<byte>.Shared.Rent(size);
+            Bitmap = new Bitmap<byte>(bitmapArray, width, height, orig.Bitmap.N);
+            for (int i = 0; i < remapping.Length; ++i)
             {
-                Bitmap = new Bitmap<T>(width, height, origStorage.Bitmap.N);
-                for (int i = 0; i < remapping.Length; ++i)
-                {
-                    var remap = remapping[i];
-                    Blitter.Blit(new BitmapRef<T>(Bitmap), origStorage.Bitmap, remap.Target.X, remap.Target.Y, remap.Source.X, remap.Source.Y, remap.Width, remap.Height);
-                }
+                var remap = remapping[i];
+                Blitter.Blit(new BitmapRef<byte>(Bitmap), orig.Bitmap, remap.Target.X, remap.Target.Y, remap.Source.X, remap.Source.Y, remap.Width, remap.Height);
             }
         }
 
-        public static implicit operator BitmapConstRef<T>(BitmapAtlasStorage<T> storage) => new BitmapConstRef<T>(storage.Bitmap);
-        public static implicit operator BitmapRef<T>(BitmapAtlasStorage<T> storage) => new BitmapRef<T>(storage.Bitmap);
-        public Bitmap<T> Move() => Bitmap;
+        public static implicit operator BitmapConstRef<byte>(BitmapAtlasStorage storage) => new BitmapConstRef<byte>(storage.Bitmap);
+        public static implicit operator BitmapRef<byte>(BitmapAtlasStorage storage) => new BitmapRef<byte>(storage.Bitmap);
+        public Bitmap<byte> Move() => Bitmap;
+
+        public void Put(int x, int y, BitmapConstRef<float> subBitmap)
+        {
+            Blitter.Blit(Bitmap, subBitmap, x, y, 0, 0, subBitmap.SubWidth, subBitmap.SubHeight);
+        }
+        public void Put(int x, int y, BitmapConstRef<byte> subBitmap)
+        {
+            Blitter.Blit(Bitmap, subBitmap, x, y, 0, 0, subBitmap.SubWidth, subBitmap.SubHeight);
+        }
+
+        public void Get(int x, int y, BitmapRef<byte> subBitmap)
+        {
+            Blitter.Blit(subBitmap, Bitmap, 0, 0, x, y, subBitmap.SubWidth, subBitmap.SubHeight);
+        }
         
-        public override void Put<S>(int x, int y, BitmapConstRef<S> subBitmap) where S : struct
+        public void Destroy()
         {
-            if (subBitmap is BitmapConstRef<T> sameTypeSubBitmap)
-            {
-                Blitter.Blit((BitmapRef<T>)Bitmap, sameTypeSubBitmap, x, y, 0, 0, subBitmap.SubWidth, subBitmap.SubHeight);
-            }
-            else if (subBitmap is BitmapConstRef<float> subBitmapFloat && Bitmap is Bitmap<byte> bytemap)
-            {
-                Blitter.Blit(new BitmapRef<byte>(bytemap), subBitmapFloat, x, y, 0, 0, subBitmap.SubWidth, subBitmap.SubHeight);
-            }
-            else
-            {
-                throw new NotSupportedException($"Blit from {typeof(S).Name} to {typeof(T).Name} is not supported.");
-            }
-        }
-
-        public override void Get<S>(int x, int y, BitmapRef<S> subBitmap)
-            where S : struct
-        {
-            throw new NotImplementedException();
+            ArrayPool<byte>.Shared.Return(Bitmap.Pixels);
         }
     }
 }

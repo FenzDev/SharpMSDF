@@ -68,7 +68,7 @@ namespace SharpMSDF.Core
     /// Simply selects the nearest contour.
     /// </summary>
     public struct SimpleContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
-    where TDistanceSelector : IDistanceSelector<TDistance>, new()
+    where TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>, new()
     {
         private TDistanceSelector shapeEdgeSelector = new();
 
@@ -90,7 +90,7 @@ namespace SharpMSDF.Core
     /// Selects the nearest contour that actually forms a border between filled and unfilled area.
     /// </summary>
     public struct OverlappingContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
-    where TDistanceSelector : IDistanceSelector<TDistance>, new()
+    where TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>, new()
     {
         private Vector2 p;
         private readonly List<int> windings = new();

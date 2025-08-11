@@ -6,12 +6,10 @@ using System.Threading.Tasks;
 
 namespace SharpMSDF.Atlas
 {
-    public class Workload
+    public struct Workload
     {
         private Func<int, int, bool> _workerFunction;
-        private int _chunks;
-
-        public Workload() { }
+        public int _chunks;
 
         public Workload(Func<int, int, bool> workerFunction, int chunks)
         {
@@ -19,15 +17,15 @@ namespace SharpMSDF.Atlas
             _chunks = chunks;
         }
 
-        public bool Finish(int threadCount)
+        public bool Finish(/*int threadCount*/)
         {
             if (_chunks == 0)
                 return true;
-            if (threadCount == 1 || _chunks == 1)
+            //if (threadCount == 1 || _chunks == 1)
                 return FinishSequential();
-            if (threadCount > 1)
-                return FinishParallel(Math.Min(threadCount, _chunks));
-            return false;
+            //if (threadCount > 1)
+            //    return FinishParallel(Math.Min(threadCount, _chunks));
+            //return false;
         }
 
         private bool FinishSequential()
@@ -38,44 +36,46 @@ namespace SharpMSDF.Atlas
             return true;
         }
 
-        private bool FinishParallel(int threadCount)
-        {
-            bool result = true;
-            int next = 0;
-            object lockObj = new();
+        //private bool FinishParallel(int threadCount)
+        //{
+        //    bool result = true;
+        //    int next = 0;
+        //    object lockObj = new();
 
-            List<Thread> threads = new(threadCount);
-            for (int threadNo = 0; threadNo < threadCount; ++threadNo)
-            {
-                int localThreadNo = threadNo;
-                Thread thread = new(() =>
-                {
-                    while (true)
-                    {
-                        int i;
-                        lock (lockObj)
-                        {
-                            if (!result || next >= _chunks)
-                                return;
-                            i = next++;
-                        }
+        //    List<Thread> threads = new(threadCount);
+        //    var workerFunction = _workerFunction;
+        //    int chunks = _chunks;
+        //    for (int threadNo = 0; threadNo < threadCount; ++threadNo)
+        //    {
+        //        int localThreadNo = threadNo;
+        //        Thread thread = new((w) =>
+        //        {
+        //            while (true)
+        //            {
+        //                int i;
+        //                lock (lockObj)
+        //                {
+        //                    if (!result || next >= chunks)
+        //                        return;
+        //                    i = next++;
+        //                }
 
-                        if (!_workerFunction(i, localThreadNo))
-                        {
-                            lock (lockObj)
-                                result = false;
-                            return;
-                        }
-                    }
-                });
-                threads.Add(thread);
-                thread.Start();
-            }
+        //                if (!workerFunction(i, localThreadNo))
+        //                {
+        //                    lock (lockObj)
+        //                        result = false;
+        //                    return;
+        //                }
+        //            }
+        //        });
+        //        threads.Add(thread);
+        //        thread.Start();
+        //    }
 
-            foreach (var thread in threads)
-                thread.Join();
+        //    foreach (var thread in threads)
+        //        thread.Join();
 
-            return result;
-        }
+        //    return result;
+        //}
     }
 }

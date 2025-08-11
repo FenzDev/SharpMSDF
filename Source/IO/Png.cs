@@ -1,5 +1,6 @@
 ﻿using SharpMSDF.Core;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -57,7 +58,7 @@ namespace SharpMSDF.IO
 
         public static bool SavePng(BitmapConstRef<byte> bitmap, string filename)
         {
-            Span<byte> pixels = new byte[4 * bitmap.SubWidth * bitmap.SubHeight];
+            byte[] pixels = ArrayPool<byte>.Shared.Rent(4 * bitmap.SubWidth * bitmap.SubHeight);
             int idx = 0;
             for (int y = bitmap.SubHeight - 1; y >= 0; y--)
             {
@@ -93,8 +94,10 @@ namespace SharpMSDF.IO
             }
             catch
             {
+                ArrayPool<byte>.Shared.Return(pixels);
                 return false;
             }
+            ArrayPool<byte>.Shared.Return(pixels);
             return true;
         }
     }

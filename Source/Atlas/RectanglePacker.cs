@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SharpMSDF.Atlas
 {
-    public class RectanglePacker
+    public struct RectanglePacker
     {
         public const int WORST_FIT = 0x7fffffff;
 

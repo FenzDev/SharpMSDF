@@ -26,7 +26,8 @@ namespace SharpMSDF.Core
         /// Fixes the sign of the input signed distance field, so that it matches the Shape's rasterized fill.
         public static void DistanceSignCorrection(in BitmapRef<float> sdf, in Shape shape, in Projection projection, FillRule fillRule = FillRule.FILL_NONZERO)
         {
-            Scanline scanline = new();
+            Span<Scanline.Intersection> intersections = stackalloc Scanline.Intersection[shape.GetEdgesCount()];
+            Scanline scanline = new(intersections);
             for (int y = 0; y < sdf.SubHeight; ++y)
             {
                 int row = shape.InverseYAxis ? sdf.SubHeight - y - 1 : y;

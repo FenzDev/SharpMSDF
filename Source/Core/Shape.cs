@@ -57,7 +57,7 @@ namespace SharpMSDF.Core
                 var contour = Contours[i];
                 if (contour.Edges.Count > 0)
                 {
-                    var corner = contour.Edges[contour.Edges.Count].Point(1);
+                    var corner = contour.Edges[contour.Edges.Count - 1].Point(1);
                     for (int j = 0; j < contour.Edges.Count; j++)
                     {
                         var edge = contour.Edges[j];
@@ -172,14 +172,23 @@ namespace SharpMSDF.Core
             return bounds;
         }
 
+        public int GetEdgesCount()
+        {
+            int count = 0;
+            for (int i = 0; i < Contours.Count; i++)
+                count += Contours[i].Edges.Count;
+            return count;
+        }
+
         /// <summary>
         /// Outputs the scanline that intersects the Shape at y.
         /// </summary>
         public void Scanline(Scanline line, float y)
         {
-            List<Scanline.Intersection> intersections = new();
+            int intersectionsCount = 0;
             Span<float> x = stackalloc float[3];
             Span<int> dy = stackalloc int[3];
+
             for (int i = 0; i < Contours.Count; i++)
             {
                 var contour = Contours[i];
@@ -188,10 +197,10 @@ namespace SharpMSDF.Core
                     var edge = contour.Edges[j];
                     int n = edge.ScanlineIntersections(x, dy, y);
                     for (int k = 0; k < n; ++k)
-                        intersections.Add(new Scanline.Intersection { X = x[k], Direction = dy[k] });
+                        line.Intersections[intersectionsCount++] = new Scanline.Intersection { X = x[k], Direction = dy[k] };
                 }
             }
-            line.SetIntersections(intersections);
+            line.SetIntersections(line.Intersections[..intersectionsCount]);
         }
 
         /// <summary>
@@ -217,8 +226,8 @@ namespace SharpMSDF.Core
 		public void OrientContours()
         {
             var orientations = new int[Contours.Count];
-            var intersections = new List<Intersection>();
-
+            Span<Intersection> intersections = stackalloc Intersection[GetEdgesCount() * 3];
+            int intersectionsCount = 0;
             Span<float> x = stackalloc float[3];
             Span<int> dy = stackalloc int[3];
 
@@ -242,15 +251,15 @@ namespace SharpMSDF.Core
                             var edge = Contours[ci].Edges[ei];
                             int n = edge.ScanlineIntersections(x, dy, y);
                             for (int k = 0; k < n; ++k)
-                                intersections.Add(new Intersection { X = x[k], Direction = dy[k], ContourIndex = ci });
+                                intersections[intersectionsCount++] = new Intersection { X = x[k], Direction = dy[k], ContourIndex = ci };
                         }
                     }
 
-                    if (intersections.Count > 0)
+                    if (intersectionsCount > 0)
                     {
                         intersections.Sort((a, b) => Math.Sign(a.X - b.X));
 
-                        for (int j = 1; j < intersections.Count; ++j)
+                        for (int j = 1; j < intersectionsCount; ++j)
                             if (intersections[j].X == intersections[j - 1].X)
                             {
                                 //intersections[e].direction = intersections[e - 1].direction = 0;
@@ -258,7 +267,7 @@ namespace SharpMSDF.Core
                                 intersections[j] = intersections[j] with { Direction = 0 };
                             }
 
-                        for (int j = 0; j < intersections.Count; ++j)
+                        for (int j = 0; j < intersectionsCount; ++j)
                             if (intersections[j].Direction != 0)
                                 orientations[intersections[j].ContourIndex] += 2 * ((j & 1) ^ (intersections[j].Direction > 0 ? 1 : 0)) - 1;
 

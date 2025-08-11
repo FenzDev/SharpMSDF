@@ -15,6 +15,10 @@ using System.Buffers;
 using static System.Net.Mime.MediaTypeNames;
 using SharpMSDF.Utilities;
 using System.Threading;
+using System.Runtime.Intrinsics.X86;
+using System.ComponentModel.Design;
+using System.Runtime.InteropServices;
+using System.Reflection.Metadata;
 
 namespace SharpMSDF.Demo
 {
@@ -23,9 +27,10 @@ namespace SharpMSDF.Demo
     {
         static void Main(string[] args)
         {
+
             var font = FontImporter.LoadFont("micross.ttf");
-            OneGlyphGen(font, '#');
-            //ImediateAtlasGen(font);
+            //OneGlyphGen(font, ' ');
+            ImediateAtlasGen(font);
             //OnDemandAtlasGen(font);
         }
 
@@ -58,14 +63,16 @@ namespace SharpMSDF.Demo
             var transformation = new SDFTransformation(new Projection(new(scale), new(0)), distMap);
             //    ^ Scale    ^ Translation  
             // Generate msdf
+            Span<EdgeCache> cache = stackalloc EdgeCache[shape.EdgeCount()];
             MSDFGen.GenerateMSDF(
                 msdf,
                 shape,
+                cache,
                 transformation
             );
 
             // Save msdf output
-            Bmp.SaveBmp(msdf, "output.bmp");
+            Png.SavePng(msdf, "output.png");
 
             // Save a rendering preview
             var rast_ = ArrayPool<float>.Shared.Rent(1024 * 1024);
@@ -77,60 +84,102 @@ namespace SharpMSDF.Demo
             ArrayPool<float>.Shared.Return(msdf_);
         }
 
-        //    private static void ImediateAtlasGen(Typeface font)
-        //    {
-        //        List<GlyphGeometry> glyphs = new (font.GlyphCount);
-        //        // FontGeometry is a helper class that loads a set of glyphs from a single font.
-        //        // It can also be used to get additional font metrics, kerning information, etc.
-        //        FontGeometry fontGeometry = new (glyphs);
-        //        // Load a set of character glyphs:
-        //        // The second argument can be ignored unless you mix different font sizes in one atlas.
-        //        // In the last argument, you can specify a charset other than ASCII.
-        //        // To load specific glyph indices, use loadGlyphs instead.
-        //        fontGeometry.LoadCharset(font, 1.0, Charset.ASCII);
-        //        // Apply MSDF edge coloring. See EdgeColorings for other coloring strategies.
-        //        const double maxCornerAngle = 3.0;
-        //        for (var g = 0; g < glyphs.Count; g++)
-        //        {
-        //            glyphs[g].GetShape().OrientContours();
-        //            glyphs[g].EdgeColoring(EdgeColorings.InkTrap, maxCornerAngle, 0);
-        //        }
-        //        // TightAtlasPacker class computes the layout of the atlas.
-        //        TightAtlasPacker packer = new();
-        //        // Set atlas parameters:
-        //        // setDimensions or setDimensionsConstraint to find the best value
-        //        packer.SetDimensionsConstraint(DimensionsConstraint.Square);
-        //        // setScale for a fixed scale or setMinimumScale to use the largest that fits
-        //        packer.SetMinimumScale(64.0);
-        //        // setPixelRange or setUnitRange
-        //        packer.SetPixelRange(new DoubleRange(6.0));
-        //        packer.SetMiterLimit(1.0);
-        //        packer.SetOriginPixelAlignment(false, true);
-        //        // Compute atlas layout - pack glyphs
-        //        packer.Pack(ref glyphs);
-        //        // Get final atlas dimensions
-        //        packer.GetDimensions(out int width, out int height);
+        private unsafe static void ImediateAtlasGen(Typeface font)
+        {
+            List<GlyphGeometry> glyphs = new (font.GlyphCount);
+            // FontGeometry is a helper class that loads a set of glyphs from a single font.
+            // It can also be used to get additional font metrics, kerning information, etc.
+            FontGeometry fontGeometry = new(glyphs);
 
-        //        //Gen function
-        //        GeneratorFunction<float> msdfGen = GlyphGenerators.Msdf;
+            
+            fontGeometry.PreEstimateGlyphCharset(font, Charset.ASCII, out var maxContours, out var maxSegments);
+            
+            Contour* contoursPtr = stackalloc Contour[maxContours];
+            PtrPool<Contour> contoursPool = new(contoursPtr, maxContours);
+            //bool isSegmentsPoolBig = maxSegments > 256;
+            PtrPool<EdgeSegment> segmentsPool;
+            EdgeSegment[] segmentArr = null; GCHandle handle = new GCHandle();
+            //if (!isSegmentsPoolBig)
+            //{
+            //    EdgeSegment* segmentsPtr = stackalloc EdgeSegment[maxSegments];
+            //    segmentsPool = new(segmentsPtr, maxSegments);
+            //}
+            /*else */if (OperatingSystem.IsBrowser())
+            {
+                segmentArr = ArrayPool<EdgeSegment>.Shared.Rent(maxSegments);
+                handle = GCHandle.Alloc(segmentArr, GCHandleType.Pinned);
+                EdgeSegment* segmentsPtr = (EdgeSegment*)handle.AddrOfPinnedObject();
+                segmentsPool = new(segmentsPtr, maxSegments);
+            }
+            else
+            {
+                nuint size = (nuint)(sizeof(EdgeSegment) * maxSegments);
+                EdgeSegment* segmentsPtr = (EdgeSegment*)NativeMemory.Alloc(size);
+                segmentsPool = new(segmentsPtr, maxSegments);
+            }
 
-        //        // The ImmediateAtlasGenerator class facilitates the generation of the atlas bitmap.
-        //        ImmediateAtlasGenerator <
-        //                float, // pixel type of buffer for individual glyphs depends on generator function
-        //                BitmapAtlasStorage<byte> // class that stores the atlas bitmap
-        //                // For example, a custom atlas storage class that stores it in VRAM can be used.
-        //            > generator = new(width, height, 3, msdfGen);
-        //        // GeneratorAttributes can be modified to change the generator's default settings.
-        //        GeneratorAttributes attributes = new();
-        //        generator.SetAttributes(attributes);
-        //        generator.SetThreadCount(4);
-        //        // Generate atlas bitmap
-        //        generator.Generate(glyphs);
-        //        // The atlas bitmap can now be retrieved via atlasStorage as a BitmapConstRef.
-        //        // The glyphs array (or fontGeometry) contains positioning data for typesetting text.
+            // Load a set of character glyphs:
+            // In the last argument, you can specify a charset other than ASCII.
+            // To load specific glyph indices, use loadGlyphs instead.
+            fontGeometry.LoadCharset(font, ref contoursPool, ref segmentsPool, 1.0f, Charset.ASCII);
+            // Apply MSDF edge coloring. See EdgeColorings for other coloring strategies.
+            const float maxCornerAngle = 3.0f;
+            for (var g = 0; g < glyphs.Count; g++)
+            {
+                var glyph = glyphs[g];
+                glyph.Shape.OrientContours();
+                glyph.EdgeColoring(EdgeColorings.InkTrap, maxCornerAngle, 0);
+                glyphs[g] = glyph;
+            }
+            // TightAtlasPacker class computes the layout of the atlas.
+            TightAtlasPacker packer = new();
+            // Set atlas parameters:
+            // setDimensions or setDimensionsConstraint to find the best value
+            packer.SetDimensionsConstraint(DimensionsConstraint.Square);
+            // setScale for a fixed scale or setMinimumScale to use the largest that fits
+            packer.SetMinimumScale(64.0f);
+            // setPixelRange or setUnitRange
+            packer.SetPixelRange(new DoubleRange(6.0f));
+            packer.SetMiterLimit(1.0f);
+            packer.SetOriginPixelAlignment(false, true);
+            // Compute atlas layout - pack glyphs
+            packer.Pack(ref glyphs);
+            // Get final atlas dimensions
+            packer.GetDimensions(out int width, out int height);
 
-        //        Png.SavePng(generator.Storage.Bitmap, "atlas.png");
-        //    }
+            //Gen function
+            //GeneratorFunction<float> msdfGen = GlyphGenerators.Msdf;
+
+            // The ImmediateAtlasGenerator class facilitates the generation of the atlas bitmap.
+            ImmediateAtlasGenerator<
+                    BitmapAtlasStorage // class that stores the atlas bitmap
+                                             // For example, a custom atlas storage class that stores it in VRAM can be used.
+                > generator = new(width, height, 3, GenType.MSDF);
+            // GeneratorAttributes can be modified to change the generator's default settings.
+            GeneratorAttributes attributes = new();
+            generator.SetAttributes(attributes);
+            // Generate atlas bitmap
+            generator.Generate(glyphs);
+            // The atlas bitmap can now be retrieved via atlasStorage as a BitmapConstRef.
+            // The glyphs array (or fontGeometry) contains positioning data for typesetting text.
+
+            //if (isSegmentsPoolBig)
+            {
+                if (OperatingSystem.IsBrowser())
+                {
+                    handle.Free();
+                    ArrayPool<EdgeSegment>.Shared.Return(segmentArr);
+                }
+                else
+                {
+                    NativeMemory.Free(segmentsPool.Data);
+                }
+            }
+
+
+            Bmp.SaveBmp(generator.Storage.Bitmap, "atlas.bmp");
+
+        }
 
         //    private static void OnDemandAtlasGen(Typeface font)
         //    {

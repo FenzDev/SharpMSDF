@@ -8,67 +8,65 @@ using System.Threading.Tasks;
 namespace SharpMSDF.Core
 {
     public ref struct ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>
-        where  TDistanceSelector : IDistanceSelector<TDistance>, new()
+        where  TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>, new()
         where TCombiner : IContourCombiner<TDistanceSelector,TDistance>, new()
     {
         public delegate float DistanceType(); // Will be overridden by TContourCombiner.DistanceType
 
         private Shape Shape;
         private readonly IContourCombiner<TDistanceSelector, TDistance> ContourCombiner;
-        private readonly EdgeCache[] ShapeEdgeCache; // real type: TContourCombiner.EdgeSelectorType.EdgeCache
+        private readonly Span<EdgeCache> ShapeEdgeCache; // real type: TContourCombiner.EdgeSelectorType.EdgeCache
 
-        public ShapeDistanceFinder(Shape shape)
+        public ShapeDistanceFinder(Shape shape, Span<EdgeCache> edgeCache)
         {
             Shape = shape;
             ContourCombiner = new TCombiner();
             ContourCombiner.NonCtorInit(shape);
-            ShapeEdgeCache = new EdgeCache[shape.EdgeCount()];
+            ShapeEdgeCache = edgeCache;
         }
 
-        public unsafe TDistance Distance(Vector2 origin)
+        public TDistance Distance(Vector2 origin)
         {
             ContourCombiner.Reset(origin);
 
-            fixed (EdgeCache* edgeCacheStart = ShapeEdgeCache)
+            int e = 0;
+            for (int c = 0; c < Shape.Contours.Count; c++)
             {
-                EdgeCache* edgeCache = edgeCacheStart;
-                //int edgeCacheIndex = 0;
-
-                for (int c = 0; c < Shape.Contours.Count; c++)
+                var contour = Shape.Contours[c];
+                if (contour.Edges.Count > 0)
                 {
-                    var contour = Shape.Contours[c];
-                    if (contour.Edges.Count > 0)
+                    var edgeSelector = ContourCombiner.GetEdgeSelector(c);
+
+                    EdgeSegment prevEdge = contour.Edges.Count >= 2
+                        ? contour.Edges[contour.Edges.Count - 2]
+                        : contour.Edges[0];
+
+                    EdgeSegment curEdge = contour.Edges[contour.Edges.Count - 1];
+
+                    for (int i = 0; i < contour.Edges.Count; i++)
                     {
-                        var edgeSelector = ContourCombiner.GetEdgeSelector(c);
-
-                        EdgeSegment prevEdge = contour.Edges.Count >= 2
-                            ? contour.Edges[contour.Edges.Count - 2]
-                            : contour.Edges[0];
-
-                        EdgeSegment curEdge = contour.Edges[contour.Edges.Count - 1];
-
-                        for (int i = 0; i < contour.Edges.Count; i++)
-                        {
-                            EdgeSegment nextEdge = contour.Edges[i];
-                            edgeSelector.AddEdge(edgeCache++, prevEdge, curEdge, nextEdge);
-                            //ShapeEdgeCache[edgeCacheIndex++] = temp;
-                            prevEdge = curEdge;
-                            curEdge = nextEdge;
-                        }
-
-                        ContourCombiner.SetEdgeSelector(c, edgeSelector);
+                        EdgeSegment nextEdge = contour.Edges[i];
+                        edgeSelector.AddEdge(ShapeEdgeCache, e++, prevEdge, curEdge, nextEdge);
+                        //ShapeEdgeCache[edgeCacheIndex++] = temp;
+                        prevEdge = curEdge;
+                        curEdge = nextEdge;
                     }
-                }
 
+                    ContourCombiner.SetEdgeSelector(c, edgeSelector);
+                }
             }
+
             return ContourCombiner.Distance();
         }
 
-        public unsafe static TDistance OneShotDistance(Shape shape, Vector2 origin)
+        public static TDistance OneShotDistance(Shape shape, Vector2 origin)
         {
+            Span<EdgeCache> cache = stackalloc EdgeCache[shape.GetEdgesCount()];
             var combiner = new TCombiner();
             combiner.NonCtorInit(shape);
             combiner.Reset(origin);
+
+            int iCache = 0;
 
             for (int i = 0; i < shape.Contours.Count; ++i)
             {
@@ -87,8 +85,7 @@ namespace SharpMSDF.Core
                 for (int e = 0; e < contour.Edges.Count; e++)
                 {
                     EdgeSegment nextEdge = contour.Edges[e];
-                    var dummyCache = new EdgeCache(); // or default!
-                    edgeSelector.AddEdge(&dummyCache, prevEdge, curEdge, nextEdge);
+                    edgeSelector.AddEdge(cache, iCache++, prevEdge, curEdge, nextEdge);
 
                     prevEdge = curEdge;
                     curEdge = nextEdge;

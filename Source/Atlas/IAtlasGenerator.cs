@@ -13,22 +13,22 @@ namespace SharpMSDF.Atlas
 	/// An atlas generator maintains the atlas bitmap (AtlasStorage) and its _Layout and facilitates
 	/// generation of bitmap representation of glyphs. The _Layout of the atlas is given by the caller.
 	/// </summary>
-	public abstract class AtlasGenerator
+	public interface IAtlasGenerator
 	{
 		/// <summary>
 		/// Generates bitmap representation for the supplied array of glyphs.
 		/// </summary>
-		public abstract void Generate(List<GlyphGeometry> glyphs);
+		public void Generate(List<GlyphGeometry> glyphs);
 
 		/// <summary>
 		/// Resizes the atlas and rearranges the generated pixels according to the remapping array.
 		/// </summary>
-        public abstract void Rearrange(int width, int height, List<Remap> remapping, int count);
+        public void Rearrange(int width, int height, List<Remap> remapping, int count);
 
 		/// <summary>
 		/// Resizes the atlas and keeps the generated pixels in place.
 		/// </summary>
-		public abstract void Resize(int width, int height);
+		public void Resize(int width, int height);
 	}
 
 	/// <summary>

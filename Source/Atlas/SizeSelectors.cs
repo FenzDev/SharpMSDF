@@ -26,7 +26,7 @@ namespace SharpMSDF.Atlas
     /// <summary>
     /// Selects square dimensions which are also a multiple of MULTIPLE.
     /// </summary>
-    public class SquareSizeSelector : ISizeSelector
+    public struct SquareSizeSelector : ISizeSelector
     {
         private readonly int _multiple;
         private int _lowerBound, _upperBound, _current;
@@ -78,7 +78,7 @@ namespace SharpMSDF.Atlas
     /// <summary>
     /// Selects square power‐of‐two dimensions.
     /// </summary>
-    public class SquarePowerOfTwoSizeSelector : ISizeSelector
+    public struct SquarePowerOfTwoSizeSelector : ISizeSelector
     {
         private int _side;
 
@@ -111,7 +111,7 @@ namespace SharpMSDF.Atlas
     /// <summary>
     /// Selects square or 2:1‐ratio power‐of‐two dimensions.
     /// </summary>
-    public class PowerOfTwoSizeSelector : ISizeSelector
+    public struct PowerOfTwoSizeSelector : ISizeSelector
     {
         private int _w, _h;
 

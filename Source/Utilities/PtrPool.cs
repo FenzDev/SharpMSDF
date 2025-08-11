@@ -8,8 +8,8 @@ namespace SharpMSDF.Utilities
 {
     public unsafe struct PtrPool<T>(T* data, int capacity) where T : unmanaged
     {
-        private readonly T* _Data = data;
         private int _Reserved;
+        public readonly T* Data = data;
         public readonly int Capacity = capacity;
 
         public PtrSpan<T> Reserve(int amount)
@@ -19,7 +19,7 @@ namespace SharpMSDF.Utilities
                 throw new ArgumentOutOfRangeException("amount");
 #endif
             var reserveIdx = _Reserved; _Reserved += amount;
-            return new PtrSpan<T>(_Data+reserveIdx, amount, 0);
+            return new PtrSpan<T>(Data+reserveIdx, amount, 0);
         }
         public T* ReserveOne()
         {
@@ -27,7 +27,7 @@ namespace SharpMSDF.Utilities
             if ((uint)_Reserved >= (uint)Capacity)
                 throw new OverflowException();
 #endif
-            return _Data+_Reserved++;
+            return Data+_Reserved++;
         }
 
         public override string ToString() => $"PtrPool<{typeof(T).Name}> Capacity={Capacity}";

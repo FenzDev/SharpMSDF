@@ -108,10 +108,11 @@ namespace SharpMSDF.Core
         internal readonly float MinImproveRatio;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ShapeDistanceChecker(BitmapConstRef<float> sdf, Shape shape, Projection projection, DistanceMapping distanceMapping, float minImproveRation)
+        public ShapeDistanceChecker(BitmapConstRef<float> sdf, Span<EdgeCache> cache, Shape shape, Projection projection, DistanceMapping distanceMapping, float minImproveRation)
         {
             Sdf = sdf;
-            DistanceFinder = new(shape);
+            
+            DistanceFinder = new(shape, cache);
             DistanceMapping = distanceMapping;
             MinImproveRatio = minImproveRation;
 
@@ -127,7 +128,7 @@ namespace SharpMSDF.Core
     /// <summary>
     /// Performs error correction on a computed MSDF to eliminate interpolation artifacts. This is a low-level class, you may want to use the API in msdf-error-correction.h instead.
     /// </summary>
-    public class MSDFErrorCorrection
+    public struct MSDFErrorCorrection
     {
 
 
@@ -637,7 +638,7 @@ namespace SharpMSDF.Core
         }
 
 
-        public unsafe void FindErrors<TCombiner>(BitmapConstRef<float> sdf, Shape shape)
+        public unsafe void FindErrors<TCombiner>(BitmapConstRef<float> sdf, Shape shape, Span<EdgeCache> cache)
             where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             ReadOnlySpan<float> dummy = stackalloc float[4];
@@ -647,7 +648,7 @@ namespace SharpMSDF.Core
             float vSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(0, Transformation.DistanceMapping[new(1)])).Length();
             float dSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)])).Length();
             {
-                var shapeDistanceChecker = new ShapeDistanceChecker<TCombiner>(sdf, shape, Transformation.Projection, Transformation.DistanceMapping, MinImproveRatio);
+                var shapeDistanceChecker = new ShapeDistanceChecker<TCombiner>(sdf, cache, shape, Transformation.Projection, Transformation.DistanceMapping, MinImproveRatio);
                 bool rightToLeft = false;
                 // Inspect all texels.
                 // Parallel.For
@@ -775,7 +776,7 @@ namespace SharpMSDF.Core
         /// <returns></returns>
         public BitmapConstRef<byte> GetStencil() => Stencil;
 
-        static void CorrectionInner<TCombiner>(BitmapRef<float> sdf, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config)
+        static void CorrectionInner<TCombiner>(BitmapRef<float> sdf, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, MSDFGeneratorConfig config)
             where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             if (config.ErrorCorrection.Mode == ErrorCorrectionConfig.OpMode.DISABLED)
@@ -817,18 +818,18 @@ namespace SharpMSDF.Core
             if (config.ErrorCorrection.DistanceCheckMode == ErrorCorrectionConfig.ConfigDistanceCheckMode.ALWAYS_CHECK_DISTANCE || config.ErrorCorrection.DistanceCheckMode == ErrorCorrectionConfig.ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE)
             {
                 if (config.OverlapSupport)
-                    ec.FindErrors<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape);
+                    ec.FindErrors<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape, cache);
                 else
-                    ec.FindErrors<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape);
+                    ec.FindErrors<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape, cache);
             }
             ec.Apply(sdf);
         }
 
 
-        public static void ErrorCorrection<TCombiner>(BitmapRef<float> sdf, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config)
+        public static void ErrorCorrection<TCombiner>(BitmapRef<float> sdf, Shape shape, Span<EdgeCache> edgeCache, SDFTransformation transformation, MSDFGeneratorConfig config)
             where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
-            CorrectionInner<TCombiner>(sdf, shape, transformation, config);
+            CorrectionInner<TCombiner>(sdf, shape, edgeCache, transformation, config);
         }
 
     }

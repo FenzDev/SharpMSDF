@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using SharpMSDF.Core;
 using SharpMSDF.IO;
+using SharpMSDF.Utilities;
 using Typography.OpenFont;
 
 namespace SharpMSDF.Atlas
@@ -10,9 +11,9 @@ namespace SharpMSDF.Atlas
     /// <summary>
     /// Represents the geometry of all glyphs of a given font or font variant
     /// </summary
-    public class FontGeometry
+    public struct FontGeometry
     {
-        public class GlyphRange
+        public struct GlyphRange
         {
             private readonly List<GlyphGeometry> glyphs;
             private readonly int rangeStart, rangeEnd;
@@ -67,10 +68,35 @@ namespace SharpMSDF.Atlas
             rangeStart = rangeEnd = (ushort)glyphs.Count;
         }
 
+        public void PreEstimateGlyphRange(Typeface font, ushort rangeStart, uint rangeEnd, out int maxContours, out int maxSegments)
+        {
+            maxContours = 0;
+            maxSegments = 0;
+
+            for (ushort index = rangeStart; index < rangeEnd; ++index)
+            {
+                FontImporter.PreEstimateGlyph(font, index, out var maxContours_, out var maxSegments_);
+                maxContours += maxContours_;
+                maxSegments += maxSegments_;
+            }
+        }
+        public void PreEstimateGlyphCharset(Typeface font, Charset set, out int maxContours, out int maxSegments)
+        {
+            maxContours = 0;
+            maxSegments = 0;
+
+            foreach (var glyph in set)
+            {
+                FontImporter.PreEstimateGlyph(font, glyph, out var maxContours_, out var maxSegments_);
+                maxContours += maxContours_;
+                maxSegments += maxSegments_;
+            }
+        }
+
         /// <summary>
         /// Loads the consecutive range of glyphs between rangeStart (inclusive) and rangeEnd (exclusive), returns the number of successfully loaded glyphs
         /// </summary>
-        public int LoadGlyphRange(Typeface font, float fontScale, ushort rangeStart, uint rangeEnd, bool preprocessGeometry = true, bool enableKerning = true)
+        public int LoadGlyphRange(Typeface font, ref PtrPool<Contour> contoursPool, ref PtrPool<EdgeSegment> segmentsPool, float fontScale, ushort rangeStart, uint rangeEnd, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == this.rangeEnd && LoadMetrics(font, fontScale)))
                 return -1;
@@ -79,12 +105,11 @@ namespace SharpMSDF.Atlas
             for (ushort index = rangeStart; index < rangeEnd; ++index)
             {
                 var glyph = new GlyphGeometry();
-                // TODO: To be fixed
-                //if (glyph.Load(font, geometryScale, index, preprocessGeometry))
-                //{
-                //    AddGlyph(glyph);
-                //    ++loaded;
-                //}
+                if (glyph.Load(font, /*index,*/ ref contoursPool, ref segmentsPool, geometryScale, index, preprocessGeometry))
+                {
+                    AddGlyph(glyph);
+                    ++loaded;
+                }
             }
 
             if (enableKerning)
@@ -97,7 +122,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Loads all glyphs in a glyphset (Charset elements are glyph indices), returns the number of successfully loaded glyphs
         /// </summary>
-        public int LoadGlyphset(Typeface face, float fontScale, Charset glyphset, bool preprocessGeometry = true, bool enableKerning = true)
+        public int LoadGlyphset(Typeface face, ref PtrPool<Contour> contoursPool, ref PtrPool<EdgeSegment> segmentsPool, float fontScale, Charset glyphset, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == rangeEnd && LoadMetrics(face, fontScale)))
                 return -1;
@@ -106,12 +131,11 @@ namespace SharpMSDF.Atlas
             foreach (uint index in glyphset)
             {
                 var glyph = new GlyphGeometry();
-                // TODO: To be fixed
-                //if (glyph.Load(face, geometryScale, index, preprocessGeometry))
-                //{
-                //    AddGlyph(glyph);
-                //    ++loaded;
-                //}
+                if (glyph.Load(face, ref contoursPool, ref segmentsPool, geometryScale, index, preprocessGeometry))
+                {
+                    AddGlyph(glyph);
+                    ++loaded;
+                }
             }
 
             if (enableKerning)
@@ -124,7 +148,7 @@ namespace SharpMSDF.Atlas
         /// <summary>
         /// Loads all glyphs in a charset (Charset elements are Unicode codepoints), returns the number of successfully loaded glyphs
         /// </summary>
-        public int LoadCharset(Typeface face, float fontScale, Charset charset, bool preprocessGeometry = true, bool enableKerning = true)
+        public int LoadCharset(Typeface face, ref PtrPool<Contour> contoursPool, ref PtrPool<EdgeSegment> segmentsPool, float fontScale, Charset charset, bool preprocessGeometry = true, bool enableKerning = true)
         {
             if (!(glyphs.Count == rangeEnd && LoadMetrics(face, fontScale)))
                 return -1;
@@ -133,12 +157,11 @@ namespace SharpMSDF.Atlas
             foreach (uint cp in charset)
             {
                 var glyph = new GlyphGeometry();
-                // TODO : To be fixed
-                //if (glyph.Load(face, geometryScale, cp, preprocessGeometry))
-                //{
-                //    AddGlyph(glyph);
-                //    ++loaded;
-                //}
+                if (glyph.Load(face, ref contoursPool, ref segmentsPool, geometryScale, cp, preprocessGeometry))
+                {
+                    AddGlyph(glyph);
+                    ++loaded;
+                }
             }
 
             if (enableKerning)
@@ -153,7 +176,7 @@ namespace SharpMSDF.Atlas
         ///</summary>
         public bool LoadMetrics(Typeface font, float fontScale)
         {
-            if (!FontImporter.GetFontMetrics(out this.metrics, font, FontCoordinateScaling.None))
+            if (!FontImporter.GetFontMetrics(out metrics, font, FontCoordinateScaling.None))
                 return false;
 
             if (metrics.EmSize <= 0)

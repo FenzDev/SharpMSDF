@@ -8,10 +8,15 @@ using System.Threading.Tasks;
 namespace SharpMSDF.Atlas
 {
     /// Represents a set of Unicode codepoints (characters)
-    public partial class Charset : IEnumerable<uint>
+    public partial struct Charset : IEnumerable<uint>
     {
         /// The set of the 95 printable ASCII characters
         public readonly static Charset ASCII = CreateAsciiCharset();
+
+        public Charset()
+        {
+            
+        }
 
         static Charset CreateAsciiCharset()
         {

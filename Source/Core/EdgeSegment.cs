@@ -71,6 +71,7 @@ namespace SharpMSDF.Core
 
         public readonly Vector2 this[int i] => i == 0 ? P0 : i == 1 ? P1 : i == 2 ? P2 : P3;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector2 Point(float t)
         {
             if (EdgeType == Bezier.Linear)
@@ -84,6 +85,7 @@ namespace SharpMSDF.Core
                                     Arithmetic.Mix(p12, Arithmetic.Mix(P2, P3, t), t), t);
             }
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector2 Direction(float t)
         {
             if (EdgeType == Bezier.Linear)
@@ -152,12 +154,12 @@ namespace SharpMSDF.Core
                 if (param > 0 && param < 1)
                 {
                     float ortho = Vector2.Dot(ab.GetOrthonormal(false), aq);
-                    if (Math.Abs(ortho) < endpointDist)
+                    if (MathF.Abs(ortho) < endpointDist)
                         return new SignedDistance(ortho, 0);
                 }
                 float sign = Arithmetic.NonZeroSign(aq.Cross(ab));
                 return new SignedDistance(sign * endpointDist,
-                    Math.Abs(Vector2.Dot(ab.Normalize(), eq.Normalize())));
+                    MathF.Abs(Vector2.Dot(ab.Normalize(), eq.Normalize())));
             }
             else if (EdgeType == Bezier.Quadratic)
             {
@@ -204,7 +206,7 @@ namespace SharpMSDF.Core
                             qa.Y + 2 * t[i] * ab.Y + t[i] * t[i] * br.Y
                         );
                         float dist = qe.Length();
-                        if (dist <= Math.Abs(minDistance))
+                        if (dist <= MathF.Abs(minDistance))
                         {
                             minDistance = Arithmetic.NonZeroSign((ab + t[i] * br).Cross(qe)) * dist;
                             param = t[i];
@@ -548,6 +550,7 @@ namespace SharpMSDF.Core
                 P3 = to;
             }
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SplitInThirds(out EdgeSegment part0, out EdgeSegment part1, out EdgeSegment part2)
         {
             if (EdgeType==Bezier.Linear)
@@ -573,6 +576,7 @@ namespace SharpMSDF.Core
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EdgeSegment ConvertToCubic() =>
             new (P0,
                 Arithmetic.Mix(P0, P1, 2.0f / 3.0f),
@@ -580,6 +584,7 @@ namespace SharpMSDF.Core
                 P2,
                 Color);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void PointBounds(Vector2 p, ref float l, ref float b, ref float r, ref float t)
         {
             if (p.X < l) l = p.X;
@@ -587,6 +592,7 @@ namespace SharpMSDF.Core
             if (p.X > r) r = p.X;
             if (p.Y > t) t = p.Y;
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DistanceToPerpendicularDistance(ref SignedDistance distance, Vector2 origin, float param)
         {
             if (param < 0)

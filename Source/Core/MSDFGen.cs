@@ -13,13 +13,15 @@ using BitmapRefMultiAndTrue = SharpMSDF.Core.BitmapRef<float>;
 using Typography.OpenFont;
 using Typography.OpenFont.Tables;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 
 namespace SharpMSDF.Core
 {
     public static class MSDFGen
     {
-        public unsafe interface DistancePixelConversion<TDistance>
+        public unsafe interface DistancePixelConversion<TDistanceSelector, TDistance>
+            where TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>
         {
             public DistanceMapping Mapping { get; set; }
 
@@ -27,7 +29,17 @@ namespace SharpMSDF.Core
             public void Convert(float* pixels, TDistance distance, int s = 0, int s2 = 0);
         }
 
-        public unsafe struct DistancePixelConversionSingle : DistancePixelConversion<float>
+        public unsafe struct DistancePixelConversionTrue : DistancePixelConversion<TrueDistanceSelector, float>
+        {
+            public DistanceMapping Mapping { get; set; }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Convert(float* pixels, float distance, int s=0, int s2=0)
+            {
+                *pixels = (float)Mapping[distance];
+            }
+        }
+        public unsafe struct DistancePixelConversionPerpendicular : DistancePixelConversion<PerpendicularDistanceSelector, float>
         {
             public DistanceMapping Mapping { get; set; }
 
@@ -38,7 +50,7 @@ namespace SharpMSDF.Core
             }
         }
 
-        public unsafe struct DistancePixelConversionMulti : DistancePixelConversion<MultiDistance>
+        public unsafe struct DistancePixelConversionMulti : DistancePixelConversion<MultiDistanceSelector, MultiDistance>
         {
             public DistanceMapping Mapping { get; set; }
 
@@ -51,7 +63,7 @@ namespace SharpMSDF.Core
             }
         }
 
-        public unsafe struct DistancePixelConversionMultiAndTrue : DistancePixelConversion<MultiAndTrueDistance>
+        public unsafe struct DistancePixelConversionMultiAndTrue : DistancePixelConversion<MultiAndTrueDistanceSelector,MultiAndTrueDistance>
         {
             public DistanceMapping Mapping { get; set; }
 
@@ -68,16 +80,16 @@ namespace SharpMSDF.Core
         /// <summary>
         /// Generates a conventional single-channel signed distance field.
         /// </summary>
-        public unsafe static void GenerateDistanceField<TCombiner, TConverter, TDistanceSelector, TDistance>(BitmapRefSingle output, Shape shape, SDFTransformation transformation) 
-            where TDistanceSelector : IDistanceSelector<TDistance>, new() 
+        public unsafe static void GenerateDistanceField<TCombiner, TConverter, TDistanceSelector, TDistance>(BitmapRefSingle output, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation) 
+            where TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>, new() 
             where TCombiner : IContourCombiner<TDistanceSelector, TDistance>, new()
-            where TConverter : DistancePixelConversion<TDistance>, new()
+            where TConverter : DistancePixelConversion<TDistanceSelector, TDistance>, new()
         {
+            
             // 1. Create the converter 
-            // TODO: potential of less H-Allocation
             var converter = new TConverter() { Mapping = transformation.DistanceMapping };
             // 2. Create your combiner‐driven distance finder
-            var distanceFinder = new ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>(shape);
+            var distanceFinder = new ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>(shape, cache);
 
             // 3. Parallel loop over rows
             bool rightToLeft = false;
@@ -110,64 +122,64 @@ namespace SharpMSDF.Core
         /// <summary>
         /// Generates a conventional single-channel signed distance field.
         /// </summary>
-        public static void GenerateSDF(BitmapRefSingle output, Shape shape, SDFTransformation transformation, GeneratorConfig config = default)
+        public static void GenerateSDF(BitmapRefSingle output, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, GeneratorConfig config = default)
         {
             if (config.OverlapSupport)
-                GenerateDistanceField<OverlappingContourCombiner<TrueDistanceSelector, float>, DistancePixelConversionSingle, TrueDistanceSelector, float>
-                    (output, shape, transformation);
+                GenerateDistanceField<OverlappingContourCombiner<TrueDistanceSelector, float>, DistancePixelConversionTrue, TrueDistanceSelector, float>
+                    (output, shape, cache, transformation);
             else
-                GenerateDistanceField<SimpleContourCombiner<TrueDistanceSelector, float>, DistancePixelConversionSingle, TrueDistanceSelector, float>
-                    (output, shape, transformation);
+                GenerateDistanceField<SimpleContourCombiner<TrueDistanceSelector, float>, DistancePixelConversionTrue, TrueDistanceSelector, float>
+                    (output, shape, cache, transformation);
         }
 
         /// <summary>
         /// Generates a single-channel signed perpendicular distance field.
         /// </summary>
-        public static void GeneratePSDF(BitmapRefSingle output, Shape shape, SDFTransformation transformation, GeneratorConfig config = default)
+        public static void GeneratePSDF(BitmapRefSingle output, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, GeneratorConfig config = default)
         {
             if (config.OverlapSupport)
-                GenerateDistanceField<OverlappingContourCombiner<PerpendicularDistanceSelector, float>, DistancePixelConversionSingle, PerpendicularDistanceSelector, float>
-                    (output, shape, transformation);
+                GenerateDistanceField<OverlappingContourCombiner<PerpendicularDistanceSelector, float>, DistancePixelConversionPerpendicular, PerpendicularDistanceSelector, float>
+                    (output, shape, cache, transformation);
             else
-                GenerateDistanceField<SimpleContourCombiner<PerpendicularDistanceSelector, float>, DistancePixelConversionSingle, PerpendicularDistanceSelector, float>
-                    (output, shape, transformation);
+                GenerateDistanceField<SimpleContourCombiner<PerpendicularDistanceSelector, float>, DistancePixelConversionPerpendicular, PerpendicularDistanceSelector, float>
+                    (output, shape, cache, transformation);
         }
 
         /// <summary>
         /// Generates a multi-channel signed distance field. Edge colors must be assigned first! (See edgeColoringSimple)
         /// </summary>
-        public static void GenerateMSDF(BitmapRefMulti output, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config = default)
+        public static void GenerateMSDF(BitmapRefMulti output, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, MSDFGeneratorConfig config = default)
         {
             if (config.OverlapSupport)
             {
                 GenerateDistanceField<OverlappingContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
-                    (output, shape, transformation);
-                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, transformation, config);
+                    (output, shape, cache, transformation);
+                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, cache, transformation, config);
             }
             else
             {
                 GenerateDistanceField<SimpleContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
-                    (output, shape, transformation);
-                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, transformation, config);
+                    (output, shape, cache, transformation);
+                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, cache, transformation, config);
             }
         }
 
         /// <summary>
         /// Generates a multi-channel signed distance field with true distance in the alpha channel. Edge colors must be assigned first.
         /// </summary>
-        public static void GenerateMTSDF(BitmapRefMultiAndTrue output, Shape shape, SDFTransformation transformation, MSDFGeneratorConfig config = default)
+        public static void GenerateMTSDF(BitmapRefMultiAndTrue output, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, MSDFGeneratorConfig config = default)
         {
             if (config.OverlapSupport)
             {
                 GenerateDistanceField<OverlappingContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
-                    (output, shape, transformation);
-                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, transformation, config);
+                    (output, shape, cache, transformation);
+                MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, cache, transformation, config);
             }
             else
             {
                 GenerateDistanceField<SimpleContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
-                    (output, shape, transformation);
-                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, transformation, config);
+                    (output, shape, cache, transformation);
+                MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, cache, transformation, config);
             }
         }
 

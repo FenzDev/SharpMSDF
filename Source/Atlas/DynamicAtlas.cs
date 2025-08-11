@@ -14,8 +14,8 @@
     /// It takes care of laying out and enlarging the atlas as necessary and delegates the actual work
     /// to the specified AtlasGenerator, which may e.g. do the work asynchronously.
     /// </summary>
-    public class DynamicAtlas<TAtlasGen>
-        where TAtlasGen : AtlasGenerator
+    public struct DynamicAtlas<TAtlasGen>
+        where TAtlasGen : IAtlasGenerator
     {
         private int _Side;
         private int _Spacing;

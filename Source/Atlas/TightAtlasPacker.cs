@@ -1,5 +1,6 @@
 using SharpMSDF.Core; // for DoubleRange
-using SharpMSDF.Atlas; // for Padding, GlyphGeometry, DimensionsConstraint, RectanglePacker
+using SharpMSDF.Atlas;
+using System.Runtime.InteropServices; // for Padding, GlyphGeometry, DimensionsConstraint, RectanglePacker
 
 namespace SharpMSDF.Atlas
 {
@@ -36,13 +37,10 @@ namespace SharpMSDF.Atlas
         /// </summary>
         public unsafe int Pack(ref List<GlyphGeometry> glyphs)
         {
-            GlyphGeometry[] glyphsArr = new GlyphGeometry[glyphs.Count];
-            glyphs.CopyTo(glyphsArr, 0);
             int packResult = -1;
-            fixed (GlyphGeometry* glyphsPtr = glyphsArr)
+            fixed (GlyphGeometry* glyphsPtr = CollectionsMarshal.AsSpan(glyphs))
             {
-                packResult = Pack(glyphsPtr, glyphsArr.Length);
-                glyphs = new(glyphsArr);
+                packResult = Pack(glyphsPtr, glyphs.Count);
             }
             return packResult;
         }

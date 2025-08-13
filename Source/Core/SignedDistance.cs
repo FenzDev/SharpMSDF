@@ -14,7 +14,7 @@ namespace SharpMSDF.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SignedDistance()
         {
-            Distance = float.NegativeInfinity;
+            Distance = -float.MaxValue;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -158,6 +158,7 @@ namespace SharpMSDF.Demo
             // GeneratorAttributes can be modified to change the generator's default settings.
             GeneratorAttributes attributes = new();
             generator.SetAttributes(attributes);
+            //generator.SetThreadCount(4);
             // Generate atlas bitmap
             generator.Generate(glyphs);
             // The atlas bitmap can now be retrieved via atlasStorage as a BitmapConstRef.

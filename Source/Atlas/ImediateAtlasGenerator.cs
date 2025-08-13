@@ -4,6 +4,7 @@ using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using System.Threading;
+using Typography.OpenFont;
 
 namespace SharpMSDF.Atlas
 {
@@ -64,15 +65,15 @@ namespace SharpMSDF.Atlas
 
 			int bufferSize = N * maxBoxArea;
 
-            // Allocate/reallocate only when bigger buffer needed
-            //if (_GlyphBuffer == null || _GlyphBuffer.Length < bufferSize)
-                _GlyphBuffer = ArrayPool<float>.Shared.Rent(bufferSize);
+			// Allocate/reallocate only when bigger buffer needed
+			//if (_GlyphBuffer == null || _GlyphBuffer.Length < bufferSize)
+			_GlyphBuffer = ArrayPool<float>.Shared.Rent(bufferSize);
 
 
-            //if (_ErrorCorrectionBuffer == null || _ErrorCorrectionBuffer.Length < maxBoxArea)
-                _ErrorCorrectionBuffer = ArrayPool<byte>.Shared.Rent(maxBoxArea);
+			//if (_ErrorCorrectionBuffer == null || _ErrorCorrectionBuffer.Length < maxBoxArea)
+			_ErrorCorrectionBuffer = ArrayPool<byte>.Shared.Rent(maxBoxArea);
 
-            GeneratorAttributes threadAttributes = new GeneratorAttributes();
+			GeneratorAttributes threadAttributes = new GeneratorAttributes();
 
 			// Get spans for the buffers to avoid repeated List access
 			Span<float> glyphBufferSpan = _GlyphBuffer;
@@ -91,7 +92,7 @@ namespace SharpMSDF.Atlas
 
 			Storage.Init(_Width, _Height, N);
 
-			GenerateEach(glyphSpan);
+			GenerateEach(glyphSpan, Storage, _GlyphBuffer, _Attributes);
 
 			ArrayPool<float>.Shared.Return(_GlyphBuffer);
 			ArrayPool<byte>.Shared.Return(_ErrorCorrectionBuffer);
@@ -103,7 +104,7 @@ namespace SharpMSDF.Atlas
             //_ = workload.Finish(_ThreadCount);
         }
 
-		public void GenerateEach(ReadOnlySpan<GlyphGeometry> glyphs)
+		public void GenerateEach(ReadOnlySpan<GlyphGeometry> glyphs, TStorage storage, float[] glyphBuffer, GeneratorAttributes att)
 		{
 			for (int i = 0; i < glyphs.Length; i++)
 			{
@@ -111,10 +112,10 @@ namespace SharpMSDF.Atlas
 				if (!glyph.IsWhitespace())
 				{
 					glyph.GetBoxRect(out int l, out int b, out int w, out int h);
-					BitmapRef<float> glyphBitmap = new(_GlyphBuffer, w, h, N);
-                    GenerateGlyph(glyphBitmap, glyph, _Attributes);
+					BitmapRef<float> glyphBitmap = new(glyphBuffer, w, h, N);
+                    GenerateGlyph(glyphBitmap, glyph, att);
 					BitmapConstRef<float> constRef = new(glyphBitmap);
-                    Storage.Put(l, b, constRef); 
+                    storage.Put(l, b, constRef); 
 				}
 			}
         }
@@ -162,10 +163,10 @@ namespace SharpMSDF.Atlas
 			_Attributes = attributes;
 		}
 
-        //	public void SetThreadCount(int threadCount)
-        //	{
-        //		_ThreadCount = threadCount;
-        //	}
-    }
+		//public void SetThreadCount(int threadCount)
+		//{
+		//	_ThreadCount = threadCount;
+		//}
+	}
 
 }

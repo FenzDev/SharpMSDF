@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -259,18 +260,18 @@ namespace SharpMSDF.Atlas
             where SizeSelector : ISizeSelector, new()
         {
             // Make a copy and expand by spacing
-            var copy = rectangles
-                .Select(r =>
-                {
-                    var c = new AtlasRectangle();
-                    c.Width = r.Width + spacing;
-                    c.Height = r.Height + spacing;
-                    return c;
-                })
-                .ToList();
+            var copy = new List<AtlasRectangle>(rectangles);
 
             // Compute total area (without spacing)
-            int totalArea = rectangles.Sum(r => r.Width * r.Height);
+            int totalArea = 0;
+            for (int i = 0; i < copy.Count; i++)
+            {
+                var copyRect = copy[i];
+                copyRect.Width += spacing;
+                copyRect.Height += spacing;
+                totalArea += copyRect.Width * copyRect.Height;
+                copy[i] = copyRect;
+            }
 
             // Initialize selector
             var selector = new SizeSelector();

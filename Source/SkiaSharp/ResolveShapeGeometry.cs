@@ -2,7 +2,9 @@
 #if USE_SKIA
 
 using SharpMSDF.Core;
+using SharpMSDF.Utilities;
 using SkiaSharp;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace SharpMSDF.SkiaSharp
@@ -22,16 +24,18 @@ namespace SharpMSDF.SkiaSharp
 			return new Vector2(p.X, p.Y);
 		}
 
-		private static void ShapeToSkiaPath(SKPath skPath, Shape shape)
+		private static void ShapeToSkiaPath(SKPath skPath, ref Shape shape)
 		{
-			foreach (var contour in shape.Contours)
+			for (var c = 0; c < shape.Contours.Count; c++)
 			{
+				var contour = shape.Contours[c];
+
 				if (contour.Edges.Count > 0)
 				{
-					var edge = contour.Edges.LastOrDefault();
+					var edge = contour.Edges.Count > 0? contour.Edges[contour.Edges.Count]: default;
 					skPath.MoveTo(PointToSkiaPoint(edge.P0));
 
-					foreach (var nextEdge in contour.Edges)
+					for (int e = 0; e < contour.Edges.Count; e++)
 					{
 						switch (edge.EdgeType)
 						{
@@ -45,20 +49,20 @@ namespace SharpMSDF.SkiaSharp
 								skPath.CubicTo(PointToSkiaPoint(edge.P1), PointToSkiaPoint(edge.P2), PointToSkiaPoint(edge.P3));
 								break;
 						}
-						edge = nextEdge;
+						edge = contour.Edges[e];
 					}
 				}
 			}
 		}
 
-		private static void ShapeFromSkiaPath(Shape shape, SKPath skPath)
+		private static void ShapeFromSkiaPath(ref Shape shape, SKPath skPath)
 		{
-			shape.Contours.Clear();
+			PtrSpan<Contour>.Clear(ref shape.Contours);
 			Contour contour = shape.AddContour();
 
 			using (var pathIterator = skPath.CreateIterator(true))
 			{
-				var edgePoints = new SKPoint[4];
+				Span<SKPoint> edgePoints = stackalloc SKPoint[4];
 				SKPathVerb verb;
 
 				while ((verb = pathIterator.Next(edgePoints)) != SKPathVerb.Done)
@@ -121,10 +125,10 @@ namespace SharpMSDF.SkiaSharp
 			}
 
 			if (contour.Edges.Count == 0)
-				shape.Contours.RemoveAt(shape.Contours.Count - 1);
+				_ = PtrSpan<Contour>.Pop(ref shape.Contours);
 		}
 
-		private static void PruneCrossedQuadrilaterals(Shape shape)
+		private static void PruneCrossedQuadrilaterals(ref Shape shape)
 		{
 			int n = 0;
 			for (int i = 0; i < shape.Contours.Count; ++i)
@@ -142,9 +146,9 @@ namespace SharpMSDF.SkiaSharp
 							  Sign(CrossProduct(contour.Edges[3].Direction(1), contour.Edges[0].Direction(0)));
 
 					if (sum == 0)
-					{
-						contour.Edges.Clear();
-					}
+                    {
+                        PtrSpan<Contour>.Clear(ref shape.Contours);
+                    }
 					else
 					{
 						if (i != n)
@@ -166,9 +170,9 @@ namespace SharpMSDF.SkiaSharp
 
 			// Resize the contours list
 			while (shape.Contours.Count > n)
-			{
-				shape.Contours.RemoveAt(shape.Contours.Count - 1);
-			}
+            {
+                _ = PtrSpan<Contour>.Pop(ref shape.Contours);
+            }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int Sign(double value)
@@ -186,22 +190,22 @@ namespace SharpMSDF.SkiaSharp
         /// <summary>
         /// Resolves any intersections within the shape by subdividing its contours using the Skia library and makes sure its contours have a consistent winding.
         /// </summary>
-        public static bool Resolve(Shape shape)
+        public static bool Resolve(ref Shape shape)
         {
             using (var skPath = new SKPath())
             {
                 shape.Normalize();
-                ShapeToSkiaPath(skPath, shape);
+                ShapeToSkiaPath(skPath, ref shape);
 
                 using (var simplifiedPath = skPath.Simplify())
                 {
                     if (simplifiedPath == null)
                         return false;
                     // Note: Skia's AsWinding doesn't seem to work for unknown reasons (from original comment)
-                    ShapeFromSkiaPath(shape, simplifiedPath);
+                    ShapeFromSkiaPath(ref shape, simplifiedPath);
                     // In some rare cases, Skia produces tiny residual crossed quadrilateral contours,
                     // which are not valid geometry, so they must be removed.
-                    PruneCrossedQuadrilaterals(shape);
+                    PruneCrossedQuadrilaterals(ref shape);
                     shape.OrientContours();
                     return true;
                 }

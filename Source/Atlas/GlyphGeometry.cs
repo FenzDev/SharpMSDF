@@ -3,7 +3,7 @@ using SharpMSDF.IO;
 using SharpMSDF.Utilities;
 using System.Numerics;
 
-#if MSDFGEN_USE_SKIA
+#if USE_SKIA
 using SharpMSDF.SkiaSharp;
 #endif
 using Typography.OpenFont;
@@ -60,7 +60,7 @@ namespace SharpMSDF.Atlas
 #if USE_SKIA
 		if (preprocessGeometry)
 		{
-			ResolveShapeGeometry.Resolve(_shape);
+			ResolveShapeGeometry.Resolve(ref Shape);
 		}
 #endif
 

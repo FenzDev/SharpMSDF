@@ -6,17 +6,8 @@
     <Nullable>enable</Nullable>
 	<DefineConstants>$(DefineConstants);USE_SKIA</DefineConstants>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<LangVersion>preview</LangVersion>
   </PropertyGroup>
-
-	<ItemGroup >
-		<!--Hide the base project code-->
-		<None Include="Core/**">
-			<Visible>false</Visible>
-		</None>
-		<None Include="Core">
-			<Visible>false</Visible>
-		</None>
-	</ItemGroup>
 
 	<ItemGroup>
 	  <PackageReference Include="SkiaSharp" Version="3.119.0" />

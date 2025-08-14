@@ -21,10 +21,10 @@ namespace SharpMSDF.Core
             return (b.X - a.X) * (a.Y + b.Y);
         }
 
-        //public void AddEdge(EdgeSegment edge)
-        //{
-        //    Edges.Add(edge);
-        //}
+        public void AddEdge(EdgeSegment edge)
+        {
+            PtrSpan<EdgeSegment>.Push(ref Edges, edge);
+        }
 
         private static void BoundPoint(ref float l, ref float b, ref float r, ref float t, Vector2 p)
         {

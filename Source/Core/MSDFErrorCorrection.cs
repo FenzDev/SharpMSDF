@@ -3,6 +3,7 @@ using System;
 using System.Numerics;
 using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -108,11 +109,11 @@ namespace SharpMSDF.Core
         internal readonly float MinImproveRatio;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ShapeDistanceChecker(BitmapConstRef<float> sdf, Span<EdgeCache> cache, Shape shape, Projection projection, DistanceMapping distanceMapping, float minImproveRation)
+        public ShapeDistanceChecker(BitmapConstRef<float> sdf, Span<EdgeCache> cache, Shape shape, int* windings, PerpendicularDistanceSelector* selectors, Projection projection, DistanceMapping distanceMapping, float minImproveRation)
         {
             Sdf = sdf;
             
-            DistanceFinder = new(shape, cache);
+            DistanceFinder = new(shape, cache, windings, selectors);
             DistanceMapping = distanceMapping;
             MinImproveRatio = minImproveRation;
 
@@ -638,7 +639,7 @@ namespace SharpMSDF.Core
         }
 
 
-        public unsafe void FindErrors<TCombiner>(BitmapConstRef<float> sdf, Shape shape, Span<EdgeCache> cache)
+        public unsafe void FindErrors<TCombiner>(BitmapConstRef<float> sdf, Shape shape, Span<EdgeCache> cache, int* windings, PerpendicularDistanceSelector* selectors)
             where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             ReadOnlySpan<float> dummy = stackalloc float[4];
@@ -648,7 +649,7 @@ namespace SharpMSDF.Core
             float vSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(0, Transformation.DistanceMapping[new(1)])).Length();
             float dSpan = MinDeviationRatio * Transformation.Projection.UnprojectVector(new(Transformation.DistanceMapping[new(1)])).Length();
             {
-                var shapeDistanceChecker = new ShapeDistanceChecker<TCombiner>(sdf, cache, shape, Transformation.Projection, Transformation.DistanceMapping, MinImproveRatio);
+                var shapeDistanceChecker = new ShapeDistanceChecker<TCombiner>(sdf, cache, shape, windings, selectors, Transformation.Projection, Transformation.DistanceMapping, MinImproveRatio);
                 bool rightToLeft = false;
                 // Inspect all texels.
                 // Parallel.For
@@ -665,6 +666,7 @@ namespace SharpMSDF.Core
                         shapeDistanceChecker.SdfCoord = new Vector2(x + .5f, row + .5f);
                         fixed (float* msd = c)
                         {
+                            shapeDistanceChecker.Msd = msd;
                             shapeDistanceChecker.ProtectedFlag = (Stencil[x, row] & (byte)Flags.Protected) != 0;
                             float cm = Arithmetic.Median(c[0], c[1], c[2]);
                             ReadOnlySpan<float> l = dummy, b = dummy, r = dummy, t = dummy;
@@ -776,11 +778,16 @@ namespace SharpMSDF.Core
         /// <returns></returns>
         public BitmapConstRef<byte> GetStencil() => Stencil;
 
-        static void CorrectionInner<TCombiner>(BitmapRef<float> sdf, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, MSDFGeneratorConfig config)
+        static unsafe void CorrectionInner<TCombiner>(BitmapRef<float> sdf, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, MSDFGeneratorConfig config)
             where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             if (config.ErrorCorrection.Mode == ErrorCorrectionConfig.OpMode.DISABLED)
                 return;
+
+
+            int* windings = stackalloc int[shape.Contours.Count];
+            PerpendicularDistanceSelector* selectors = stackalloc PerpendicularDistanceSelector[shape.Contours.Count];
+
             Bitmap<byte> stencilBuffer;
             if (config.ErrorCorrection.Buffer == null)
                 stencilBuffer = new Bitmap<byte>(sdf.SubWidth, sdf.SubHeight);
@@ -811,22 +818,22 @@ namespace SharpMSDF.Core
                 || (config.ErrorCorrection.DistanceCheckMode == ErrorCorrectionConfig.ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE
                     && config.ErrorCorrection.Mode != ErrorCorrectionConfig.OpMode.EDGE_ONLY))
             {
-                ec.FindErrors<TCombiner>(sdf);
+                ec.FindErrors<TCombiner>(sdf, shape, cache, windings, selectors);
                 if (config.ErrorCorrection.DistanceCheckMode == ErrorCorrectionConfig.ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE)
                     ec.ProtectAll();
             }
             if (config.ErrorCorrection.DistanceCheckMode == ErrorCorrectionConfig.ConfigDistanceCheckMode.ALWAYS_CHECK_DISTANCE || config.ErrorCorrection.DistanceCheckMode == ErrorCorrectionConfig.ConfigDistanceCheckMode.CHECK_DISTANCE_AT_EDGE)
             {
                 if (config.OverlapSupport)
-                    ec.FindErrors<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape, cache);
+                    ec.FindErrors<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape, cache, windings, selectors);
                 else
-                    ec.FindErrors<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape, cache);
+                    ec.FindErrors<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(sdf, shape, cache, windings, selectors);
             }
             ec.Apply(sdf);
         }
 
 
-        public static void ErrorCorrection<TCombiner>(BitmapRef<float> sdf, Shape shape, Span<EdgeCache> edgeCache, SDFTransformation transformation, MSDFGeneratorConfig config)
+        public unsafe static void ErrorCorrection<TCombiner>(BitmapRef<float> sdf, Shape shape, Span<EdgeCache> edgeCache, SDFTransformation transformation, MSDFGeneratorConfig config)
             where TCombiner : IContourCombiner<PerpendicularDistanceSelector, float>, new()
         {
             CorrectionInner<TCombiner>(sdf, shape, edgeCache, transformation, config);

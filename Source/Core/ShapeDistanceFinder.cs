@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SharpMSDF.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -14,14 +15,14 @@ namespace SharpMSDF.Core
         public delegate float DistanceType(); // Will be overridden by TContourCombiner.DistanceType
 
         private Shape Shape;
-        private readonly IContourCombiner<TDistanceSelector, TDistance> ContourCombiner;
+        private TCombiner ContourCombiner;
         private readonly Span<EdgeCache> ShapeEdgeCache; // real type: TContourCombiner.EdgeSelectorType.EdgeCache
 
-        public ShapeDistanceFinder(Shape shape, Span<EdgeCache> edgeCache)
+        public unsafe ShapeDistanceFinder(Shape shape, Span<EdgeCache> edgeCache, int* windings, TDistanceSelector* selector)
         {
             Shape = shape;
             ContourCombiner = new TCombiner();
-            ContourCombiner.NonCtorInit(shape);
+            ContourCombiner.NonCtorInit(shape, windings, selector);
             ShapeEdgeCache = edgeCache;
         }
 
@@ -59,11 +60,11 @@ namespace SharpMSDF.Core
             return ContourCombiner.Distance();
         }
 
-        public static TDistance OneShotDistance(Shape shape, Vector2 origin)
+        public unsafe static TDistance OneShotDistance(Shape shape, int* windings, TDistanceSelector* selector, Vector2 origin)
         {
             Span<EdgeCache> cache = stackalloc EdgeCache[shape.GetEdgesCount()];
             var combiner = new TCombiner();
-            combiner.NonCtorInit(shape);
+            combiner.NonCtorInit(shape, windings, selector);
             combiner.Reset(origin);
 
             int iCache = 0;

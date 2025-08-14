@@ -14,11 +14,12 @@ using Typography.OpenFont;
 using Typography.OpenFont.Tables;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using SharpMSDF.Utilities;
 
 
 namespace SharpMSDF.Core
 {
-    public static class MSDFGen
+    public unsafe static class MSDFGen
     {
         public unsafe interface DistancePixelConversion<TDistanceSelector, TDistance>
             where TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>
@@ -80,16 +81,16 @@ namespace SharpMSDF.Core
         /// <summary>
         /// Generates a conventional single-channel signed distance field.
         /// </summary>
-        public unsafe static void GenerateDistanceField<TCombiner, TConverter, TDistanceSelector, TDistance>(BitmapRefSingle output, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation) 
+        public unsafe static void GenerateDistanceField<TCombiner, TConverter, TDistanceSelector, TDistance>(BitmapRefSingle output, Shape shape, Span<EdgeCache> cache, int* windingsCache, TDistanceSelector* selectorCache, SDFTransformation transformation) 
             where TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>, new() 
             where TCombiner : IContourCombiner<TDistanceSelector, TDistance>, new()
             where TConverter : DistancePixelConversion<TDistanceSelector, TDistance>, new()
         {
-            
+
             // 1. Create the converter 
             var converter = new TConverter() { Mapping = transformation.DistanceMapping };
             // 2. Create your combiner‐driven distance finder
-            var distanceFinder = new ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>(shape, cache);
+            var distanceFinder = new ShapeDistanceFinder<TCombiner, TDistanceSelector, TDistance>(shape, cache, windingsCache, selectorCache);
 
             // 3. Parallel loop over rows
             bool rightToLeft = false;
@@ -124,12 +125,21 @@ namespace SharpMSDF.Core
         /// </summary>
         public static void GenerateSDF(BitmapRefSingle output, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, GeneratorConfig config = default)
         {
+
             if (config.OverlapSupport)
+            {
+                int* windings = stackalloc int[shape.Contours.Count];
+                TrueDistanceSelector* selectors = stackalloc TrueDistanceSelector[shape.Contours.Count];
                 GenerateDistanceField<OverlappingContourCombiner<TrueDistanceSelector, float>, DistancePixelConversionTrue, TrueDistanceSelector, float>
-                    (output, shape, cache, transformation);
+                    (output, shape, cache, windings, selectors, transformation);
+            }
             else
+            {
+                int* windings = null;
+                TrueDistanceSelector* selectors = null;
                 GenerateDistanceField<SimpleContourCombiner<TrueDistanceSelector, float>, DistancePixelConversionTrue, TrueDistanceSelector, float>
-                    (output, shape, cache, transformation);
+                    (output, shape, cache, windings, selectors, transformation);
+            }
         }
 
         /// <summary>
@@ -138,11 +148,21 @@ namespace SharpMSDF.Core
         public static void GeneratePSDF(BitmapRefSingle output, Shape shape, Span<EdgeCache> cache, SDFTransformation transformation, GeneratorConfig config = default)
         {
             if (config.OverlapSupport)
+            {
+                int* windings = stackalloc int[shape.Contours.Count];
+                PerpendicularDistanceSelector* selectors = stackalloc PerpendicularDistanceSelector[shape.Contours.Count];
+
                 GenerateDistanceField<OverlappingContourCombiner<PerpendicularDistanceSelector, float>, DistancePixelConversionPerpendicular, PerpendicularDistanceSelector, float>
-                    (output, shape, cache, transformation);
+                    (output, shape, cache, windings, selectors, transformation);
+            }
             else
+            {
+                int* windings = null;
+                PerpendicularDistanceSelector* selectors = null;
+
                 GenerateDistanceField<SimpleContourCombiner<PerpendicularDistanceSelector, float>, DistancePixelConversionPerpendicular, PerpendicularDistanceSelector, float>
-                    (output, shape, cache, transformation);
+                    (output, shape, cache, windings, selectors, transformation);
+            }
         }
 
         /// <summary>
@@ -152,14 +172,20 @@ namespace SharpMSDF.Core
         {
             if (config.OverlapSupport)
             {
+                int* windings = stackalloc int[shape.Contours.Count];
+                MultiDistanceSelector* selectors = stackalloc MultiDistanceSelector[shape.Contours.Count];
+
                 GenerateDistanceField<OverlappingContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
-                    (output, shape, cache, transformation);
+                    (output, shape, cache, windings, selectors, transformation);
                 MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, cache, transformation, config);
             }
             else
             {
+                int* windings = stackalloc int[shape.Contours.Count];
+                MultiDistanceSelector* selectors = stackalloc MultiDistanceSelector[shape.Contours.Count];
+
                 GenerateDistanceField<SimpleContourCombiner<MultiDistanceSelector, MultiDistance>, DistancePixelConversionMulti, MultiDistanceSelector, MultiDistance>
-                    (output, shape, cache, transformation);
+                    (output, shape, cache, windings, selectors, transformation);
                 MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, cache, transformation, config);
             }
         }
@@ -171,14 +197,20 @@ namespace SharpMSDF.Core
         {
             if (config.OverlapSupport)
             {
+                int* windings = stackalloc int[shape.Contours.Count];
+                MultiAndTrueDistanceSelector* selectors = stackalloc MultiAndTrueDistanceSelector[shape.Contours.Count];
+
                 GenerateDistanceField<OverlappingContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
-                    (output, shape, cache, transformation);
+                    (output, shape, cache, windings, selectors, transformation);
                 MSDFErrorCorrection.ErrorCorrection<OverlappingContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, cache, transformation, config);
             }
             else
             {
+                int* windings = stackalloc int[shape.Contours.Count];
+                MultiAndTrueDistanceSelector* selectors = stackalloc MultiAndTrueDistanceSelector[shape.Contours.Count];
+
                 GenerateDistanceField<SimpleContourCombiner<MultiAndTrueDistanceSelector, MultiAndTrueDistance>, DistancePixelConversionMultiAndTrue, MultiAndTrueDistanceSelector, MultiAndTrueDistance>
-                    (output, shape, cache, transformation);
+                    (output, shape, cache, windings, selectors, transformation);
                 MSDFErrorCorrection.ErrorCorrection<SimpleContourCombiner<PerpendicularDistanceSelector, float>>(output, shape, cache, transformation, config);
             }
         }

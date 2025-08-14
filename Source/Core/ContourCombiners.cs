@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using SharpMSDF.Utilities;
+using System.Numerics;
 
 namespace SharpMSDF.Core
 {
@@ -54,9 +55,9 @@ namespace SharpMSDF.Core
             Arithmetic.Median(d.R, d.G, d.B); // or include A as needed
     }
 
-    public interface IContourCombiner<TDistanceSelector, TDistance>
+    public unsafe interface IContourCombiner<TDistanceSelector, TDistance>
     {
-        public virtual void NonCtorInit(Shape shape) { }
+        public void NonCtorInit(Shape shape, int* windings, TDistanceSelector* selector);
         public void Reset(Vector2 origin);
         public TDistanceSelector GetEdgeSelector(int contourIndex);
         public void SetEdgeSelector(int contourIndex, TDistanceSelector selector);
@@ -67,12 +68,14 @@ namespace SharpMSDF.Core
     /// <summary>
     /// Simply selects the nearest contour.
     /// </summary>
-    public struct SimpleContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
+    public unsafe struct SimpleContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
     where TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>, new()
     {
         private TDistanceSelector shapeEdgeSelector = new();
 
         public SimpleContourCombiner() { }
+
+        public void NonCtorInit(Shape shape, int* windings, TDistanceSelector* selector) { }
 
         public void Reset(Vector2 p)
         {
@@ -89,39 +92,43 @@ namespace SharpMSDF.Core
     /// <summary>
     /// Selects the nearest contour that actually forms a border between filled and unfilled area.
     /// </summary>
-    public struct OverlappingContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
+    public unsafe struct OverlappingContourCombiner<TDistanceSelector, TDistance> : IContourCombiner<TDistanceSelector, TDistance>
     where TDistanceSelector : IDistanceSelector<TDistanceSelector, TDistance>, new()
     {
         private Vector2 p;
-        private readonly List<int> windings = new();
-        private readonly List<TDistanceSelector> edgeSelectors = new();
+        private int* _Windings;
+        private TDistanceSelector* _EdgeSelectors;
+        private int _ContoursCount;
 
         public OverlappingContourCombiner() {}
 
 
-        public void NonCtorInit(ref Shape shape)
+        public void NonCtorInit(Shape shape, int* windings, TDistanceSelector* selector)
         {
-            for (int c = 0; c < shape.Contours.Count; c++)
-            {
+            _ContoursCount = shape.Contours.Count;
+            _Windings = windings;
+            _EdgeSelectors = selector;
 
-                windings.Add(shape.Contours[c].Winding());
-                edgeSelectors.Add(new TDistanceSelector());
+            for (int c = 0; c < _ContoursCount; c++)
+            {
+                windings[c] = shape.Contours[c].Winding();
+                _EdgeSelectors[c] = new TDistanceSelector();
             }
         }
 
         public void Reset(Vector2 p)
         {
             this.p = p;
-            foreach (var selector in edgeSelectors)
-                selector.Reset(p);
+            for (int s = 0; s < _ContoursCount; s++)
+                _EdgeSelectors[s].Reset(p);
         }
 
-        public readonly TDistanceSelector GetEdgeSelector(int i) => edgeSelectors[i];
-        public void SetEdgeSelector(int i, TDistanceSelector selector) { edgeSelectors[i] = selector; }
+        public readonly TDistanceSelector GetEdgeSelector(int i) => _EdgeSelectors[i];
+        public void SetEdgeSelector(int i, TDistanceSelector selector) { _EdgeSelectors[i] = selector; }
 
         public TDistance Distance()
         {
-            int contourCount = edgeSelectors.Count;
+            int contourCount = _ContoursCount;
 
             var shapeEdgeSelector = new TDistanceSelector();
             var innerEdgeSelector = new TDistanceSelector();
@@ -133,14 +140,14 @@ namespace SharpMSDF.Core
 
             for (int i = 0; i < contourCount; ++i)
             {
-                TDistance edgeDistance = edgeSelectors[i].Distance();
-                shapeEdgeSelector.Merge(edgeSelectors[i]);
+                TDistance edgeDistance = _EdgeSelectors[i].Distance();
+                shapeEdgeSelector.Merge(_EdgeSelectors[i]);
 
                 float dist = DistanceUtils.ResolveDistance(edgeDistance);
-                if (windings[i] > 0 && dist >= 0)
-                    innerEdgeSelector.Merge(edgeSelectors[i]);
-                if (windings[i] < 0 && dist <= 0)
-                    outerEdgeSelector.Merge(edgeSelectors[i]);
+                if (_Windings[i] > 0 && dist >= 0)
+                    innerEdgeSelector.Merge(_EdgeSelectors[i]);
+                if (_Windings[i] < 0 && dist <= 0)
+                    outerEdgeSelector.Merge(_EdgeSelectors[i]);
             }
 
             TDistance shapeDistance = shapeEdgeSelector.Distance();
@@ -161,9 +168,9 @@ namespace SharpMSDF.Core
                 winding = 1;
                 for (int i = 0; i < contourCount; ++i)
                 {
-                    if (windings[i] > 0)
+                    if (_Windings[i] > 0)
                     {
-                        var contourDist = edgeSelectors[i].Distance();
+                        var contourDist = _EdgeSelectors[i].Distance();
                         float contourRes = DistanceUtils.ResolveDistance(contourDist);
                         if (Math.Abs(contourRes) < Math.Abs(outerDist) && contourRes > DistanceUtils.ResolveDistance(distance))
                             distance = contourDist;
@@ -176,9 +183,9 @@ namespace SharpMSDF.Core
                 winding = -1;
                 for (int i = 0; i < contourCount; ++i)
                 {
-                    if (windings[i] < 0)
+                    if (_Windings[i] < 0)
                     {
-                        var contourDist = edgeSelectors[i].Distance();
+                        var contourDist = _EdgeSelectors[i].Distance();
                         float contourRes = DistanceUtils.ResolveDistance(contourDist);
                         if (Math.Abs(contourRes) < Math.Abs(innerDist) && contourRes < DistanceUtils.ResolveDistance(distance))
                             distance = contourDist;
@@ -192,9 +199,9 @@ namespace SharpMSDF.Core
 
             for (int i = 0; i < contourCount; ++i)
             {
-                if (windings[i] != winding)
+                if (_Windings[i] != winding)
                 {
-                    var contourDist = edgeSelectors[i].Distance();
+                    var contourDist = _EdgeSelectors[i].Distance();
                     float res = DistanceUtils.ResolveDistance(contourDist);
                     float distRes = DistanceUtils.ResolveDistance(distance);
                     if (res * distRes >= 0 && Math.Abs(res) < Math.Abs(distRes))

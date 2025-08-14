@@ -55,7 +55,6 @@
         /// </summary>
         public ChangeFlag Add(List<GlyphGeometry> glyphs, bool allowRearrange = false)
         {
-            // TODO : Fix
             ChangeFlag changeFlags = 0;
             int start = _Rectangles.Count;
 

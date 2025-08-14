@@ -36,7 +36,7 @@ namespace SharpMSDF.Atlas
             Span<EdgeCache> cache = stackalloc EdgeCache[glyph.Shape.EdgeCount()];
             MSDFGeneratorConfig config = attribs.Config;
 			if (attribs.ScanlinePass)
-				config.ErrorCorrection.Mode = ErrorCorrectionConfig.OpMode.DISABLED;
+				config.ErrorCorrection.Mode = OpMode.DISABLED;
 			MSDFGen.GenerateMSDF(output, glyph.Shape, cache, new(glyph.GetBoxProjection(), new(glyph.GetBoxRange())), config);
 			if (attribs.ScanlinePass)
 			{

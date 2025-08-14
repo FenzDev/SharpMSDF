@@ -21,9 +21,9 @@ namespace SharpMSDF.Atlas
 		where TStorage : IAtlasStorage<TStorage>, new()
 	{
 		public readonly int N;
-		public GenType GenType { get; }
+		public GenType GenType;
 		public TStorage Storage = new();
-		public List<GlyphBox> Layout { get; } = [];
+		public List<GlyphBox> Layout = [];
 
 		private int _Width, _Height;
 		private float[]? _GlyphBuffer;
@@ -35,6 +35,7 @@ namespace SharpMSDF.Atlas
 		{
 			N = n;
             GenType = genType;
+			Storage.Init(0, 0, n);
 		}
 
 		public ImmediateAtlasGenerator(int width, int height, int n, GenType genType)
@@ -43,6 +44,7 @@ namespace SharpMSDF.Atlas
 			_Width = width;
 			_Height = height;
             GenType = genType;
+			Storage.Init(width, height, n);
 		}
 
 		public ImmediateAtlasGenerator(int n, GenType genType, TStorage storage)
@@ -90,21 +92,21 @@ namespace SharpMSDF.Atlas
 			//	threadAttributes[i].Config.ErrorCorrection.Buffer = threadErrorSpan.ToArray();
 			//}
 
-			Storage.Init(_Width, _Height, N);
+			if (_Width != 0 && _Height != 0)
+				Storage.Init(_Width, _Height, N);
 
-			GenerateEach(glyphSpan, Storage, _GlyphBuffer, _Attributes);
+			GenerateEach(glyphSpan, ref Storage, _GlyphBuffer, _Attributes);
 
 			ArrayPool<float>.Shared.Return(_GlyphBuffer);
 			ArrayPool<byte>.Shared.Return(_ErrorCorrectionBuffer);
 			_GlyphBuffer = null;
 			_ErrorCorrectionBuffer = null;
-
-			Storage.Destroy();
+			
 
             //_ = workload.Finish(_ThreadCount);
         }
 
-		public void GenerateEach(ReadOnlySpan<GlyphGeometry> glyphs, TStorage storage, float[] glyphBuffer, GeneratorAttributes att)
+		public void GenerateEach(ReadOnlySpan<GlyphGeometry> glyphs, ref TStorage storage, float[] glyphBuffer, GeneratorAttributes att)
 		{
 			for (int i = 0; i < glyphs.Length; i++)
 			{

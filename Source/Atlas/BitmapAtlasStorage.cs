@@ -15,15 +15,16 @@ namespace SharpMSDF.Atlas
             int size = width * height * channels;
             var bitmapArray = ArrayPool<byte>.Shared.Rent(size);
             Bitmap = new Bitmap<byte>(bitmapArray, width, height, channels);
-            Array.Clear(Bitmap.Pixels, 0, Bitmap.Pixels.Length);
         }
 
         public void Init(BitmapConstRef<byte> bitmap)
         {
             int size = bitmap.SubWidth * bitmap.SubHeight * bitmap.N;
             var bitmapArray = ArrayPool<byte>.Shared.Rent(size);
-            Destroy();
+            if (Bitmap.Pixels != null)
+                Destroy();
             Bitmap = new Bitmap<byte> (bitmapArray, bitmap.OriginalWidth, bitmap.OriginalHeight, bitmap.N);
+            Array.Clear(Bitmap.Pixels, 0, Bitmap.Pixels.Length);
             Array.Copy(bitmap._Pixels, Bitmap.Pixels, size);
         }
 
@@ -35,18 +36,22 @@ namespace SharpMSDF.Atlas
         public void Init(BitmapAtlasStorage orig, int width, int height)
         {
             // TODO: if length of old array is sam no need to rerent
-            Destroy();
+            if (Bitmap.Pixels != null)
+                Destroy();
             var bitmapArray = ArrayPool<byte>.Shared.Rent(width*height*orig.Bitmap.N);
             Bitmap = new Bitmap<byte>(bitmapArray, width, height, orig.Bitmap.N);
+            Array.Clear(Bitmap.Pixels, 0, Bitmap.Pixels.Length);
             Blitter.Blit(new BitmapRef<byte>(Bitmap), orig.Bitmap, 0, 0, 0, 0, Math.Min(width, orig.Bitmap.Width), Math.Min(height, orig.Bitmap.Height));
         }
 
         public void Init(BitmapAtlasStorage orig, int width, int height, Span<Remap> remapping)
         {
             int size = width * height * orig.Bitmap.N;
-            Destroy();
+            if (Bitmap.Pixels != null)
+                Destroy();
             var bitmapArray = ArrayPool<byte>.Shared.Rent(size);
             Bitmap = new Bitmap<byte>(bitmapArray, width, height, orig.Bitmap.N);
+            Array.Clear(Bitmap.Pixels, 0, Bitmap.Pixels.Length);
             for (int i = 0; i < remapping.Length; ++i)
             {
                 var remap = remapping[i];

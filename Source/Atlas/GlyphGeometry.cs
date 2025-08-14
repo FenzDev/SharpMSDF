@@ -42,7 +42,7 @@ namespace SharpMSDF.Atlas
 
 		public GlyphGeometry() { }
 
-		public bool Load(Typeface font, /*int glyphIndex, */ref PtrPool<Contour> contoursPool, ref PtrPool<EdgeSegment> segmentsPool, float geometryScale, uint codepoint, bool preprocessGeometry = true)
+		public unsafe bool Load(Typeface font, /*int glyphIndex, */ref PtrPool<Contour> contoursPool, ref PtrPool<EdgeSegment> segmentsPool, float geometryScale, uint codepoint, bool preprocessGeometry = true)
 		{
 			if (font == null)
 				return false;
@@ -76,7 +76,10 @@ namespace SharpMSDF.Atlas
 						_bounds.b - (_bounds.t - _bounds.b) - 1
 					);
 
-					if (SimpleTrueShapeDistanceFinder.OneShotDistance(Shape, outerPoint) > 0)
+					int* windings = stackalloc int[Shape.Contours.Count];
+					TrueDistanceSelector* selectors = stackalloc TrueDistanceSelector[Shape.Contours.Count];
+
+					if (SimpleTrueShapeDistanceFinder.OneShotDistance(Shape, windings, selectors, outerPoint) > 0)
 					{
 						for (int c = 0; c < Shape.Contours.Count; c++)
                             Shape.Contours[c].Reverse();

@@ -15,7 +15,7 @@ namespace SharpMSDF.Atlas
 
         public Charset()
         {
-            
+            _Codepoints = [];
         }
 
         static Charset CreateAsciiCharset()
@@ -42,7 +42,7 @@ namespace SharpMSDF.Atlas
 
         IEnumerator IEnumerable.GetEnumerator() => _Codepoints.GetEnumerator();
 
-        private SortedSet<uint> _Codepoints = [];
+        private SortedSet<uint> _Codepoints;
 
     };
 

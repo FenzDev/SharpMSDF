@@ -282,17 +282,9 @@ namespace SharpMSDF.Core
             if (d >= 0 && d < _minPosPerp) _minPosPerp = d;
         }
 
-        public void Merge(PerpendicularDistanceSelectorBase other)
-        {
-            if (other._minTrueDistance < _minTrueDistance)
-            {
-                _minTrueDistance = other._minTrueDistance;
-                _nearEdge = other._nearEdge;
-                _nearEdgeParam = other._nearEdgeParam;
-            }
-            if (other._minNegPerp > _minNegPerp) _minNegPerp = other._minNegPerp;
-            if (other._minPosPerp < _minPosPerp) _minPosPerp = other._minPosPerp;
-        }
+        //public void Merge(PerpendicularDistanceSelectorBase other)
+        //{
+        //}
 
         internal float ComputeDistance(Vector2 p)
         {
@@ -318,7 +310,14 @@ namespace SharpMSDF.Core
 
         public void Merge(PerpendicularDistanceSelector other)
         {
-             Merge(other);
+            if (other._minTrueDistance < _minTrueDistance)
+            {
+                _minTrueDistance = other._minTrueDistance;
+                _nearEdge = other._nearEdge;
+                _nearEdgeParam = other._nearEdgeParam;
+            }
+            if (other._minNegPerp > _minNegPerp) _minNegPerp = other._minNegPerp;
+            if (other._minPosPerp < _minPosPerp) _minPosPerp = other._minPosPerp;
         }
 
         public void AddEdge(Span<EdgeCache> cache, int index, EdgeSegment prevEdge, EdgeSegment edge, EdgeSegment nextEdge)
